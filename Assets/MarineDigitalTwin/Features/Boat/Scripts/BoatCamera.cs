@@ -5,7 +5,7 @@ namespace MarineDigitalTwin.Boat
     public class BoatCamera : MonoBehaviour
     {
         public Transform target;
-        public Vector3 offset = new Vector3(0, 4, -10);
+        public Vector3 offset = new Vector3(10, 4, 0);
         public float smoothSpeed = 5f;
 
         void LateUpdate()

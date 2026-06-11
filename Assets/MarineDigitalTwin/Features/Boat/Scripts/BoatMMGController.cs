@@ -52,7 +52,7 @@ namespace MarineDigitalTwin.Boat
         // ── Input ─────────────────────────────────────────────────────────
         [Header("Input")]
         [Range(-35f, 35f)] public float rudderAngleDeg = 0f;   // δ (degrees)
-        [Range(0f, 25f)]   public float propellerRPS   = 10f;  // n (rev/s)
+        [Range(0f, 25f)]   public float propellerRPS   = 18f;  // n (rev/s)
 
         // ── Runtime state ─────────────────────────────────────────────────
         float _u, _v, _r;   // surge, sway, yaw rate (body frame)
@@ -79,9 +79,14 @@ namespace MarineDigitalTwin.Boat
 
         void UpdateBodyVelocity()
         {
+            // boat_24.FBX 로컬 축 기준:
+            //   bow(선수) → local -X  (-transform.right)
+            //   starboard(우현) → local +Z  (+transform.forward)
+            //   up → local +Y
+            // 이 매핑은 FBX 원점/방향에 종속 — 모델 교체 시 재확인 필요
             Vector3 localVel = transform.InverseTransformDirection(_rb.linearVelocity);
-            _u =  localVel.z;   // forward
-            _v = -localVel.x;   // lateral (sway)
+            _u = -localVel.x;   // surge: bow 방향 속도 (+= 전진)
+            _v =  localVel.z;   // sway:  우현 방향 속도 (+= 우현)
             _r =  _rb.angularVelocity.y;
         }
 
@@ -96,6 +101,7 @@ namespace MarineDigitalTwin.Boat
             float r_nd  = _r * Lpp / U;           // non-dim yaw rate
 
             float X_H = -0.5f * 1025f * Lpp * d * U * U * 0.08f * beta * beta;
+            float X_RR = -0.5f * 1025f * Lpp * d * 0.12f * _u * Mathf.Abs(_u);
             float Y_H = (Yv * _v + Yr * _r);
             float N_H = (Nv * _v + Nr * _r);
 
@@ -117,15 +123,15 @@ namespace MarineDigitalTwin.Boat
             float Y_R = -(1f + a_H) * F_N * Mathf.Cos(delta);
             float N_R = -(x_R + a_H * x_H) * F_N * Mathf.Cos(delta);
 
-            return (X_H + X_P + X_R, Y_H + Y_R, N_H + N_R);
+            return (X_H + X_RR + X_P + X_R, Y_H + Y_R, N_H + N_R);
         }
 
         void ApplyForces(float X, float Y, float N)
         {
-            // Surge (forward)
-            Vector3 surgeForce = transform.forward * X;
-            // Sway (lateral)
-            Vector3 swayForce  = -transform.right * Y;
+            // X(surge): bow = -transform.right,  Y(sway): starboard = +transform.forward
+            // N(yaw):   시계방향 회전 = +transform.up (Unity 좌표계)
+            Vector3 surgeForce = -transform.right * X;
+            Vector3 swayForce  =  transform.forward * Y;
 
             _rb.AddForce(surgeForce + swayForce, ForceMode.Force);
             _rb.AddTorque(transform.up * N, ForceMode.Force);
