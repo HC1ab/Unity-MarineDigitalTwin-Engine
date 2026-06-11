@@ -129,7 +129,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: 4.69
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalPosition.y
@@ -137,11 +137,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -6.58
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.x
@@ -149,7 +149,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.z
@@ -161,7 +161,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 0
+      value: 180
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
@@ -214,6 +214,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 89057709}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 89057711}
   m_SourcePrefab: {fileID: 100100000, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
 --- !u!1 &89057706 stripped
 GameObject:
@@ -229,8 +232,8 @@ Rigidbody:
   m_GameObject: {fileID: 89057706}
   serializedVersion: 4
   m_Mass: 1500
-  m_Drag: 0.5
-  m_AngularDrag: 2
+  m_Drag: 1.5
+  m_AngularDrag: 3
   m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
@@ -245,7 +248,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 0
+  m_Constraints: 80
   m_CollisionDetection: 2
 --- !u!4 &89057708 stripped
 Transform:
@@ -265,7 +268,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   waterSurface: {fileID: 1994641259}
-  waterLevel: 0
+  fallbackWaterLevel: 0
   hullPoints:
   - {fileID: 1988549715}
   - {fileID: 1557581598}
@@ -277,8 +280,9 @@ MonoBehaviour:
   - {fileID: 448594436}
   - {fileID: 1331702176}
   - {fileID: 207162719}
-  buoyancyFactor: 5000
-  dampingFactor: 1500
+  buoyancyFactor: 60000
+  dampingFactor: 3000
+  debugLog: 1
 --- !u!114 &89057710
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -292,7 +296,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rudderAngleDeg: 0
-  propellerRPS: 10
+  propellerRPS: 0
+--- !u!114 &89057711
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 89057706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd49ecca0ebd678498108d6e1209a60b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxRPS: 15
+  throttleSpeed: 8
+  maxRudderDeg: 35
+  rudderSpeed: 60
 --- !u!1 &207162718
 GameObject:
   m_ObjectHideFlags: 0
@@ -885,7 +905,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dbca6a0fe7ee6a14e95712b6f9d25956, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: -4
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: dbca6a0fe7ee6a14e95712b6f9d25956, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1264,7 +1284,7 @@ MonoBehaviour:
   geometryType: 3
   meshRenderers: []
   timeMultiplier: 1
-  scriptInteractions: 0
+  scriptInteractions: 1
   cpuEvaluateRipples: 0
   customMaterial: {fileID: 0}
   startSmoothness: 0.95

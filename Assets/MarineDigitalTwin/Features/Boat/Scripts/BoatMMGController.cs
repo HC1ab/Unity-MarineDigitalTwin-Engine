@@ -63,9 +63,11 @@ namespace MarineDigitalTwin.Boat
         {
             _rb = GetComponent<Rigidbody>();
             _rb.mass = m;
-            _rb.linearDamping = 0f;   // MMG handles all drag
-            _rb.angularDamping = 0f;
             _rb.useGravity = true;
+            _rb.automaticInertiaTensor = false;
+            // Rectangular box approximation: L=7.3, B=2.5, H=1.5
+            _rb.inertiaTensor = new Vector3(1063f, 7000f, 7443f);
+            _rb.inertiaTensorRotation = Quaternion.identity;
         }
 
         void FixedUpdate()
