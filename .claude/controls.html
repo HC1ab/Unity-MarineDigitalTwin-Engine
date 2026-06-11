@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Marine Digital Twin — 조작 명세서</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0f1a; color: #cdd6f4; font-family: 'Segoe UI', sans-serif; padding: 40px; }
+  h1 { font-size: 1.6rem; color: #89b4fa; border-bottom: 1px solid #313244; padding-bottom: 12px; margin-bottom: 8px; }
+  .subtitle { color: #6c7086; font-size: 0.85rem; margin-bottom: 36px; }
+  h2 { font-size: 1rem; color: #a6e3a1; text-transform: uppercase; letter-spacing: 0.1em; margin: 32px 0 14px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  thead tr { background: #181825; }
+  thead th { padding: 10px 14px; text-align: left; color: #89b4fa; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid #313244; }
+  tbody tr { border-bottom: 1px solid #1e1e2e; transition: background 0.15s; }
+  tbody tr:hover { background: #181825; }
+  td { padding: 10px 14px; font-size: 0.9rem; vertical-align: top; }
+  .key { display: inline-block; background: #313244; border: 1px solid #45475a; border-bottom: 3px solid #45475a; border-radius: 6px; padding: 3px 10px; font-family: monospace; font-size: 0.85rem; color: #cdd6f4; white-space: nowrap; }
+  .key-combo { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+  .slash { color: #6c7086; font-size: 0.8rem; }
+  .tag { display: inline-block; border-radius: 4px; padding: 1px 7px; font-size: 0.72rem; font-weight: 600; margin-left: 6px; vertical-align: middle; }
+  .tag-req  { background: #f38ba822; color: #f38ba8; border: 1px solid #f38ba844; }
+  .tag-real { background: #a6e3a122; color: #a6e3a1; border: 1px solid #a6e3a144; }
+  .tag-opt  { background: #fab38722; color: #fab387; border: 1px solid #fab38744; }
+  .note { background: #181825; border-left: 3px solid #89b4fa; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 0.83rem; color: #a6adc8; margin-top: 6px; line-height: 1.6; }
+  .note b { color: #cdd6f4; }
+  .warn { border-left-color: #f38ba8; }
+  .warn b { color: #f38ba8; }
+  .section-desc { color: #6c7086; font-size: 0.82rem; margin-bottom: 12px; }
+  .gear-badge { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; font-weight: 700; font-family: monospace; }
+  .fwd { background: #a6e3a122; color: #a6e3a1; border: 1px solid #a6e3a144; }
+  .neu { background: #cba6f722; color: #cba6f7; border: 1px solid #cba6f744; }
+  .rev { background: #f38ba822; color: #f38ba8; border: 1px solid #f38ba844; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 8px; }
+  .card { background: #181825; border: 1px solid #313244; border-radius: 8px; padding: 18px; }
+  .card h3 { color: #89b4fa; font-size: 0.85rem; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat-row { display: flex; justify-content: space-between; font-size: 0.83rem; padding: 4px 0; border-bottom: 1px solid #1e1e2e; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: #6c7086; }
+  .stat-val { color: #cdd6f4; font-family: monospace; }
+</style>
+</head>
+<body>
+
+<h1>Marine Digital Twin — 조작 명세서</h1>
+<p class="subtitle">SeaBoat24Ft · MMG Standard Model · Unity 6 HDRP · v1.0</p>
+
+<!-- ───────────────────────────── 추진 ───────────────────────────── -->
+<h2>추진 / 기어</h2>
+<p class="section-desc">실제 아웃보드 선외기의 단일 레버 방식을 재현. 기어와 RPM을 하나의 축으로 제어.</p>
+<table>
+  <thead><tr><th>키</th><th>기능</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="key">W</span></td>
+      <td>전진 스로틀 <span class="tag tag-req">필수</span></td>
+      <td>
+        <span class="gear-badge neu">NEUTRAL</span> 또는 <span class="gear-badge fwd">FORWARD</span> 상태에서 자동으로 전진 기어 체결 후 RPM 상승.
+        <span class="gear-badge rev">REVERSE</span> 중 누르면 RPM만 감소 (기어 변속 없음).
+      </td>
+    </tr>
+    <tr>
+      <td><span class="key">S</span></td>
+      <td>후진 스로틀 <span class="tag tag-req">필수</span></td>
+      <td>
+        <span class="gear-badge neu">NEUTRAL</span> 또는 <span class="gear-badge rev">REVERSE</span> 상태에서 후진 기어 체결 후 RPM 상승.
+        <span class="gear-badge fwd">FORWARD</span> 중 누르면 RPM만 감소.
+      </td>
+    </tr>
+    <tr>
+      <td><span class="key">F</span></td>
+      <td>뉴트럴 <span class="tag tag-req">필수</span></td>
+      <td>
+        <span class="gear-badge neu">NEUTRAL</span>로 변속. <b>RPS ≤ 5일 때만 허용</b> — 고RPM 강제 변속 시 무시됨 (기어 보호).
+      </td>
+    </tr>
+    <tr>
+      <td><span class="key">W</span> / <span class="key">S</span> 떼기</td>
+      <td>아이들 복귀</td>
+      <td>RPM이 자동으로 아이들(0)까지 감소. 기어는 유지됨.</td>
+    </tr>
+  </tbody>
+</table>
+<div class="note warn">
+  <b>⚠ 고RPM 기어변속 금지:</b> 실제 선박과 동일하게 고RPM 상태에서 F키 입력은 무시됨.
+  전진 → 후진 전환 시 반드시 RPM을 낮춘 후 F → S 순서로 조작.
+</div>
+
+<!-- ───────────────────────────── 조타 ───────────────────────────── -->
+<h2>조타 (타각)</h2>
+<p class="section-desc">선박 헬름은 자동차와 달리 입력이 없으면 마지막 각도를 유지. 유압식 self-locking 구조 재현.</p>
+<table>
+  <thead><tr><th>키</th><th>기능</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="key">A</span></td>
+      <td>좌현 조타</td>
+      <td>타각을 좌현(-) 방향으로 변화. 최대 -35°. 키를 떼면 <b>현재 각도 유지</b> (자동 복원 없음).</td>
+    </tr>
+    <tr>
+      <td><span class="key">D</span></td>
+      <td>우현 조타</td>
+      <td>타각을 우현(+) 방향으로 변화. 최대 +35°. 키를 떼면 <b>현재 각도 유지</b>.</td>
+    </tr>
+  </tbody>
+</table>
+<div class="note">
+  <b>속도 의존 응답:</b> 저속(U &lt; 3 m/s) 구간에서 타각 효과가 선형 감소. 정지 상태에선 조타 거의 무효.
+  고속(플레이닝)에서 예민한 응답. 후진 시 러더 효과 70% 감소 — prop walk이 방향 제어 지배.
+</div>
+
+<!-- ───────────────────────────── 트림 ───────────────────────────── -->
+<h2>트림 (엔진 각도)</h2>
+<p class="section-desc">선외기 엔진의 상하 각도 조절. 선수 자세와 속도/저항에 직접 영향.</p>
+<table>
+  <thead><tr><th>키</th><th>기능</th><th>효과</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="key">Q</span></td>
+      <td>트림 아웃 <span class="tag tag-real">현실적</span></td>
+      <td>엔진 위로 → 선수 상승. 플레이닝 후 저항 최대 30% 감소. 과도 시 포포이징(선수 진동) 발생 가능.</td>
+    </tr>
+    <tr>
+      <td><span class="key">E</span></td>
+      <td>트림 인 <span class="tag tag-real">현실적</span></td>
+      <td>엔진 아래로 → 선수 하강. 가속 초기 / 헝 구간 통과 시 유리. 저항 최대 20% 증가.</td>
+    </tr>
+  </tbody>
+</table>
+<div class="note">
+  <b>최적 트림 전략:</b> 정지→가속 시 <b>트림 인</b> 유지 → 플레이닝 진입 후 <b>트림 아웃</b>으로 전환하면 최고속 도달.
+  웨이크(뒤 파도)가 깨끗하면 트림이 잘 세팅된 상태.
+</div>
+
+<!-- ───────────────────────────── 긴급 ───────────────────────────── -->
+<h2>긴급 / 안전</h2>
+<table>
+  <thead><tr><th>키</th><th>기능</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="key">Space</span></td>
+      <td>킬스위치 <span class="tag tag-req">필수</span></td>
+      <td>즉시 <span class="gear-badge neu">NEUTRAL</span> + RPS=0 + 타각=0 강제. RPM 조건 무시하고 즉각 실행.</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ───────────────────────────── 물리 현상 ───────────────────────────── -->
+<h2>구현된 물리 현상</h2>
+<div class="grid">
+  <div class="card">
+    <h3>Prop Walk (프로펠러 편류)</h3>
+    <div class="stat-row"><span class="stat-label">전진 시</span><span class="stat-val">우현 편류 (계수 0.04)</span></div>
+    <div class="stat-row"><span class="stat-label">후진 시</span><span class="stat-val">좌현 편류 (계수 0.08 — 2배)</span></div>
+    <div class="stat-row"><span class="stat-label">직진 보정</span><span class="stat-val">전진 시 좌현 타각 미세 유지 필요</span></div>
+    <div class="stat-row"><span class="stat-label">후진 조종</span><span class="stat-val">타각 거의 무효, prop walk 활용</span></div>
+  </div>
+  <div class="card">
+    <h3>Planing (플레이닝)</h3>
+    <div class="stat-row"><span class="stat-label">Displacement 모드</span><span class="stat-val">0 ~ 8 knots</span></div>
+    <div class="stat-row"><span class="stat-label">Hump 구간</span><span class="stat-val">8 ~ 12 knots (저항 1.8배)</span></div>
+    <div class="stat-row"><span class="stat-label">Planing 모드</span><span class="stat-val">12 knots 이상 (저항 감소)</span></div>
+    <div class="stat-row"><span class="stat-label">헝 통과 팁</span><span class="stat-val">트림 인 + 풀 스로틀 유지</span></div>
+  </div>
+  <div class="card">
+    <h3>MMG 선체 계수 (SeaBoat24Ft)</h3>
+    <div class="stat-row"><span class="stat-label">선장 Lpp</span><span class="stat-val">7.3 m</span></div>
+    <div class="stat-row"><span class="stat-label">선폭 B</span><span class="stat-val">2.5 m</span></div>
+    <div class="stat-row"><span class="stat-label">흘수 d</span><span class="stat-val">0.5 m</span></div>
+    <div class="stat-row"><span class="stat-label">블록계수 Cb</span><span class="stat-val">0.45 (V-hull)</span></div>
+    <div class="stat-row"><span class="stat-label">질량</span><span class="stat-val">1,500 kg</span></div>
+  </div>
+  <div class="card">
+    <h3>부력 시스템</h3>
+    <div class="stat-row"><span class="stat-label">방식</span><span class="stat-val">Hull Point (10포인트)</span></div>
+    <div class="stat-row"><span class="stat-label">수면 쿼리</span><span class="stat-val">HDRP Water API (실시간 파도)</span></div>
+    <div class="stat-row"><span class="stat-label">buoyancyFactor</span><span class="stat-val">60,000</span></div>
+    <div class="stat-row"><span class="stat-label">dampingFactor</span><span class="stat-val">10,000</span></div>
+  </div>
+</div>
+
+<!-- ───────────────────────────── 빠른 참조 ───────────────────────────── -->
+<h2>빠른 참조 — 전체 키맵</h2>
+<table>
+  <thead><tr><th>키</th><th>기능</th><th>비고</th></tr></thead>
+  <tbody>
+    <tr><td><span class="key">W</span></td><td>전진 스로틀 증가</td><td>FORWARD 자동 체결</td></tr>
+    <tr><td><span class="key">S</span></td><td>후진 스로틀 증가</td><td>REVERSE 자동 체결</td></tr>
+    <tr><td><span class="key">A</span></td><td>좌현 조타</td><td>복원 없음 — 각도 유지</td></tr>
+    <tr><td><span class="key">D</span></td><td>우현 조타</td><td>복원 없음 — 각도 유지</td></tr>
+    <tr><td><span class="key">Q</span></td><td>트림 아웃</td><td>선수 상승 / 저항 감소</td></tr>
+    <tr><td><span class="key">E</span></td><td>트림 인</td><td>선수 하강 / 가속 유리</td></tr>
+    <tr><td><span class="key">F</span></td><td>뉴트럴</td><td>RPS ≤ 5 조건</td></tr>
+    <tr><td><span class="key">Space</span></td><td>킬스위치</td><td>즉시 정지 (무조건)</td></tr>
+  </tbody>
+</table>
+
+<div style="margin-top:40px; color:#313244; font-size:0.75rem;">
+  MarineDigitalTwin Engine · Unity 6000.0.76f1 + HDRP 17.0.4 · MMG Standard Model (Yoshimura 2006)
+</div>
+
+</body>
+</html>

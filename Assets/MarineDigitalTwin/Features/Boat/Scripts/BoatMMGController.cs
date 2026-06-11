@@ -2,6 +2,7 @@ using UnityEngine;
 
 namespace MarineDigitalTwin.Boat
 {
+    public enum GearState { Reverse, Neutral, Forward }
     /// <summary>
     /// MMG (Maneuvering Modeling Group) standard model for SeaBoat24Ft.
     /// Coefficients estimated via empirical formulas (Inoue/Yoshimura) from hull dimensions.
@@ -52,7 +53,12 @@ namespace MarineDigitalTwin.Boat
         // ── Input ─────────────────────────────────────────────────────────
         [Header("Input")]
         [Range(-35f, 35f)] public float rudderAngleDeg = 0f;   // δ (degrees)
-        [Range(0f, 35f)]   public float propellerRPS   = 22f;  // n (rev/s)
+        [Range(0f, 35f)]   public float propellerRPS   = 0f;   // n (rev/s)
+        public GearState gear = GearState.Neutral;
+
+        [Header("Trim")]
+        [Range(-20f, 20f)] public float trimAngleDeg = 0f;
+        // 양수 = 트림 아웃(선수 상승), 음수 = 트림 인(선수 하강)
 
         // ── Runtime state ─────────────────────────────────────────────────
         float _u, _v, _r;   // surge, sway, yaw rate (body frame)
@@ -64,10 +70,13 @@ namespace MarineDigitalTwin.Boat
             _rb = GetComponent<Rigidbody>();
             _rb.mass = m;
             _rb.useGravity = true;
+            _rb.linearDamping  = 0f;   // MMG X_RR이 surge 저항 담당 — Unity drag 불필요
+            _rb.angularDamping = 0.5f; // 요 댐핑 소량만 유지
             _rb.automaticInertiaTensor = false;
-            // Rectangular box approximation: L=7.3, B=2.5, H=1.5
             _rb.inertiaTensor = new Vector3(1063f, 7000f, 7443f);
             _rb.inertiaTensorRotation = Quaternion.identity;
+            // roll(X)/pitch(Z) 자유 — 부력/트림이 자세 제어
+            _rb.constraints = RigidbodyConstraints.None;
         }
 
         void FixedUpdate()
@@ -97,33 +106,52 @@ namespace MarineDigitalTwin.Boat
             float U     = Mathf.Max(Mathf.Sqrt(_u * _u + _v * _v), 0.01f);
 
             // ── Hull forces ───────────────────────────────────────────────
-            float beta  = Mathf.Atan2(-_v, _u);  // drift angle
-            float r_nd  = _r * Lpp / U;           // non-dim yaw rate
+            float beta = Mathf.Atan2(-_v, _u);
+            float r_nd = _r * Lpp / U;
 
             float X_H = -0.5f * 1025f * Lpp * d * U * U * 0.08f * beta * beta;
-            float X_RR = -0.5f * 1025f * Lpp * d * 0.06f * _u * Mathf.Abs(_u);
+            // Planing 저항 곡선 — hump(8~12kn) 구간 저항 1.8배, 이후 감소
+            float speedKn  = U * 1.944f;
+            float humpMult = 1f + 0.8f * Mathf.Exp(-Mathf.Pow((speedKn - 10f) / 3f, 2f));
+            // 트림 아웃(+) = 저항 감소 최대 30%, 트림 인(-) = 저항 증가 최대 20%
+            float trimResist = 1f - trimAngleDeg * 0.015f;
+            float X_RR     = -0.5f * 1025f * Lpp * d * 0.06f * humpMult * trimResist * _u * Mathf.Abs(_u);
             float Y_H = (Yv * _v + Yr * _r);
             float N_H = (Nv * _v + Nr * _r);
 
-            // ── Propeller thrust ──────────────────────────────────────────
+            // ── Propeller thrust (기어 반영) ──────────────────────────────
+            float gearSign = gear == GearState.Forward  ?  1f :
+                             gear == GearState.Reverse  ? -1f : 0f;
             float w_P = w_P0 * Mathf.Exp(-4f * beta * beta);
-            float V_A = U * (1f - w_P);
-            float J   = (V_A > 0.01f) ? V_A / (n * Dp) : 0f;
+            float V_A = Mathf.Abs(_u) * (1f - w_P);
+            float J   = (n > 0.01f && V_A > 0.01f) ? V_A / (n * Dp) : 0f;
             float K_T = Mathf.Max(0.45f - 0.463f * J, 0f);
             float T   = 1025f * n * n * Dp * Dp * Dp * Dp * K_T;
-            float X_P = (1f - t_P) * T;
+            float X_P = gearSign * (1f - t_P) * T;
+
+            // ── Prop Walk (우회전 프로펠러 편류) ──────────────────────────
+            // 전진: 우현(+sway) 편류, 후진: 좌현(-sway) 편류 + 2배 강도
+            float propWalkStrength = gear == GearState.Forward  ?  0.04f :
+                                     gear == GearState.Reverse  ? -0.08f : 0f;
+            float Y_PW = propWalkStrength * T;
 
             // ── Rudder forces ─────────────────────────────────────────────
-            float u_R   = U * Mathf.Sqrt(eta * (1f + kappa * (Mathf.Sqrt(1f + 8f * K_T / (Mathf.PI * J * J + 0.01f)) - 1f)) * (1f + kappa * (Mathf.Sqrt(1f + 8f * K_T / (Mathf.PI * J * J + 0.01f)) - 1f)));
-            float v_R   = U * (-beta + delta * 0.6f - r_nd * 0.4f);
+            // 후진 시 70% 감소 + 저속 시 응답 둔화 (3 m/s 이하 선형 감소)
+            float speedFactor  = Mathf.Clamp01(U / 3f);
+            float rudderEffect = (gear == GearState.Reverse ? 0.3f : 1.0f) * speedFactor;
+            float u_R    = U * Mathf.Sqrt(Mathf.Max(eta * (1f + kappa *
+                             (Mathf.Sqrt(1f + 8f * K_T / (Mathf.PI * J * J + 0.01f)) - 1f)) *
+                             (1f + kappa * (Mathf.Sqrt(1f + 8f * K_T /
+                             (Mathf.PI * J * J + 0.01f)) - 1f)), 0.001f));
+            float v_R    = U * (-beta + delta * 0.6f * rudderEffect - r_nd * 0.4f);
             float alpha_R = Mathf.Atan2(v_R, u_R);
-            float F_N   = 0.5f * 1025f * A_R * f_alpha * Mathf.Sin(alpha_R) * u_R * u_R;
+            float F_N    = 0.5f * 1025f * A_R * f_alpha * Mathf.Sin(alpha_R) * u_R * u_R;
 
             float X_R = -(1f - t_R) * F_N * Mathf.Sin(delta);
             float Y_R = -(1f + a_H) * F_N * Mathf.Cos(delta);
             float N_R = -(x_R + a_H * x_H) * F_N * Mathf.Cos(delta);
 
-            return (X_H + X_RR + X_P + X_R, Y_H + Y_R, N_H + N_R);
+            return (X_H + X_RR + X_P + X_R, Y_H + Y_PW + Y_R, N_H + N_R);
         }
 
         void ApplyForces(float X, float Y, float N)
@@ -135,6 +163,11 @@ namespace MarineDigitalTwin.Boat
 
             _rb.AddForce(surgeForce + swayForce, ForceMode.Force);
             _rb.AddTorque(transform.up * N, ForceMode.Force);
+
+            // 트림 피치 토크 — 트림 아웃(+): 선수 상승, 트림 인(-): 선수 하강
+            // transform.forward = starboard(우현) 축이므로 피치 = -transform.forward
+            float trimTorque = trimAngleDeg * 80f;
+            _rb.AddTorque(-transform.forward * trimTorque, ForceMode.Force);
         }
 
 #if UNITY_EDITOR

@@ -20,8 +20,12 @@ namespace MarineDigitalTwin.Boat
 
         void Update()
         {
-            rpsText.text    = $"RPS: {mmg.propellerRPS:F1} / 35";
-            rudderText.text = $"Rudder: {mmg.rudderAngleDeg:F1}°";
+            string gearStr  = mmg.gear == GearState.Forward ? "FWD" :
+                              mmg.gear == GearState.Reverse ? "REV" : "NEU";
+            rpsText.text    = $"Gear: {gearStr}  RPS: {mmg.propellerRPS:F1}";
+            float trimResist = 1f - mmg.trimAngleDeg * 0.015f;
+            string trimDir   = mmg.trimAngleDeg > 0.5f ? "OUT" : mmg.trimAngleDeg < -0.5f ? "IN" : "---";
+            rudderText.text  = $"Rudder: {mmg.rudderAngleDeg:F1}°  Trim: {mmg.trimAngleDeg:F1}° [{trimDir} {trimResist*100f:F0}%저항]";
             float knots     = _rb.linearVelocity.magnitude * 1.944f;
             speedText.text  = $"Speed: {knots:F1} kn";
         }
