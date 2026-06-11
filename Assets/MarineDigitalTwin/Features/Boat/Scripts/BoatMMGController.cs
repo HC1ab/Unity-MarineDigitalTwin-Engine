@@ -52,7 +52,7 @@ namespace MarineDigitalTwin.Boat
         // ── Input ─────────────────────────────────────────────────────────
         [Header("Input")]
         [Range(-35f, 35f)] public float rudderAngleDeg = 0f;   // δ (degrees)
-        [Range(0f, 25f)]   public float propellerRPS   = 18f;  // n (rev/s)
+        [Range(0f, 35f)]   public float propellerRPS   = 22f;  // n (rev/s)
 
         // ── Runtime state ─────────────────────────────────────────────────
         float _u, _v, _r;   // surge, sway, yaw rate (body frame)
@@ -101,7 +101,7 @@ namespace MarineDigitalTwin.Boat
             float r_nd  = _r * Lpp / U;           // non-dim yaw rate
 
             float X_H = -0.5f * 1025f * Lpp * d * U * U * 0.08f * beta * beta;
-            float X_RR = -0.5f * 1025f * Lpp * d * 0.12f * _u * Mathf.Abs(_u);
+            float X_RR = -0.5f * 1025f * Lpp * d * 0.06f * _u * Mathf.Abs(_u);
             float Y_H = (Yv * _v + Yr * _r);
             float N_H = (Nv * _v + Nr * _r);
 
