@@ -39,9 +39,20 @@ namespace MarineDigitalTwin.Boat
         /// <summary>TelemetryCollector가 Dequeue해서 소비한다.</summary>
         public Queue<DetectedEvent> EventQueue { get; } = new Queue<DetectedEvent>();
 
+        [Header("Debug UI")]
+        public bool showDebugUI = true;
+
         Rigidbody _rb;
         float     _timer;
         const float CheckInterval = 0.5f;
+
+        // 최근 이벤트 로그 (UI 표시용)
+        readonly List<(DetectedEvent e, float time)> _recentEvents = new();
+        const int MaxDisplayEvents = 6;
+        const float EventDisplayDuration = 5f;
+
+        GUIStyle _boxStyle;
+        GUIStyle _labelStyle;
 
         // Gizmo 상태
         bool    _collisionActive;
@@ -121,16 +132,94 @@ namespace MarineDigitalTwin.Boat
         // ── 이벤트 큐 적재 ────────────────────────────────────────────────────
         void Enqueue(EventType type, Severity severity, string desc)
         {
-            EventQueue.Enqueue(new DetectedEvent
+            var ev = new DetectedEvent
             {
-                eventType = type,
-                severity  = severity,
+                eventType   = type,
+                severity    = severity,
                 description = desc,
-                position  = transform.position,
-                eventTime = DateTime.UtcNow,
-            });
+                position    = transform.position,
+                eventTime   = DateTime.UtcNow,
+            };
+            EventQueue.Enqueue(ev);
+            _recentEvents.Add((ev, Time.time));
+            if (_recentEvents.Count > MaxDisplayEvents)
+                _recentEvents.RemoveAt(0);
             Debug.Log($"[EventDetector] {type} ({severity}): {desc}");
         }
+
+        // ── 디버그 UI ─────────────────────────────────────────────────────────
+        void OnGUI()
+        {
+            if (!showDebugUI) return;
+
+            // 스타일 초기화 (첫 OnGUI 호출 시)
+            if (_boxStyle == null)
+            {
+                _boxStyle = new GUIStyle(GUI.skin.box)
+                {
+                    padding = new RectOffset(8, 8, 6, 6),
+                };
+                _labelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    fontSize  = 13,
+                    fontStyle = FontStyle.Bold,
+                };
+            }
+
+            // 만료 이벤트 제거
+            _recentEvents.RemoveAll(x => Time.time - x.time > EventDisplayDuration);
+
+            float panelW = 360f;
+            float rowH   = 22f;
+            float headerH = 24f;
+            float panelH  = headerH + Mathf.Max(_recentEvents.Count, 1) * rowH + 8f;
+            float x = Screen.width - panelW - 10f;
+            float y = 10f;
+
+            // 배경
+            GUI.color = new Color(0, 0, 0, 0.65f);
+            GUI.Box(new Rect(x - 4, y - 4, panelW + 8, panelH + 8), GUIContent.none, _boxStyle);
+            GUI.color = Color.white;
+
+            // 헤더
+            _labelStyle.normal.textColor = Color.white;
+            GUI.Label(new Rect(x, y, panelW, headerH), "■ EVENT DETECTOR", _labelStyle);
+            y += headerH;
+
+            if (_recentEvents.Count == 0)
+            {
+                _labelStyle.normal.textColor = new Color(0.6f, 0.6f, 0.6f);
+                GUI.Label(new Rect(x, y, panelW, rowH), "  이벤트 없음", _labelStyle);
+                return;
+            }
+
+            for (int i = _recentEvents.Count - 1; i >= 0; i--)
+            {
+                var (ev, t) = _recentEvents[i];
+                float age   = Time.time - t;
+                float alpha = Mathf.Clamp01(1f - age / EventDisplayDuration);
+
+                _labelStyle.normal.textColor = EventColor(ev.severity, alpha);
+                string tag  = ev.eventType switch
+                {
+                    EventType.SPEEDING          => "⚡ SPEED",
+                    EventType.COLLISION_WARNING => "⚠ COLL",
+                    EventType.ROUTE_DEVIATION   => "↗ ROUTE",
+                    EventType.GROUNDING_WARNING => "⬇ GRND",
+                    _                           => "?"
+                };
+                GUI.Label(new Rect(x, y, panelW, rowH),
+                          $"  [{tag}] {ev.description}", _labelStyle);
+                y += rowH;
+            }
+        }
+
+        static Color EventColor(Severity s, float alpha) => s switch
+        {
+            Severity.HIGH   => new Color(1f,   0.3f, 0.3f, alpha),
+            Severity.MEDIUM => new Color(1f,   0.8f, 0.2f, alpha),
+            _               => new Color(0.8f, 0.8f, 0.8f, alpha),
+        };
 
 #if UNITY_EDITOR
         void OnDrawGizmosSelected()
