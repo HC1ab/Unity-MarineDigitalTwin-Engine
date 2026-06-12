@@ -166,8 +166,30 @@ POST /api/v1/sessions/{sessionId}/telemetry
 
 ---
 
-## ML 파이프라인 (P8)
+## 데이터 역할 분리
 
+| 테이블 | ML 용도 | 게임 용도 |
+|---|---|---|
+| `vessel_logs` | LSTM 입력 피처 (X) | - |
+| `environment_logs` | LSTM 입력 피처 (X) | - |
+| `event_logs` | LSTM 레이블 (Y) 도출 | - |
+| `evaluation_results` | **ML과 무관** | 결과 화면 요약 점수 표시용 |
+
+`evaluation_results.total_score`는 규칙 기반 점수(충돌×20 + 과속×5 ...)로,
+주관적 가중치라 ML 학습 신호로 부적합. 게임 피드백 전용으로만 사용.
+
+---
+
+## ML 파이프라인 (P9)
+
+### 레이블링 방식
+```python
+# vessel_log 타임스탬프 기준으로 슬라이딩 윈도우
+# → 이후 30초 안에 event_logs 이벤트 존재 → label = 1 (위험)
+# → 이벤트 없음                           → label = 0 (안전)
+```
+
+### 학습 파이프라인
 ```
 DB → Python 추출 → 전처리 (정규화 / 슬라이딩 윈도우 30프레임 / 레이블 불균형 처리)
   → LSTM (입력: 30×14피처, 출력: 위험도 0.0~1.0)
