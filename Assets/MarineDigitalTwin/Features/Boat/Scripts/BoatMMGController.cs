@@ -72,6 +72,16 @@ namespace MarineDigitalTwin.Boat
         void Awake()
         {
             _rb = GetComponent<Rigidbody>();
+
+            // 선체 충돌 박스 — Collider 없으면 자동 추가
+            if (GetComponent<Collider>() == null)
+            {
+                var bc    = gameObject.AddComponent<BoxCollider>();
+                bc.center = new Vector3(0f, 0.3f, 0f);
+                // boat_24.FBX: bow=-X, starboard=+Z → Box(X=Lpp, Y=height, Z=B)
+                bc.size   = new Vector3(Lpp, 1.2f, B);
+            }
+
             _rb.mass = m;
             _rb.useGravity = true;
             _rb.linearDamping  = 0f;   // MMG X_RR이 surge 저항 담당 — Unity drag 불필요
