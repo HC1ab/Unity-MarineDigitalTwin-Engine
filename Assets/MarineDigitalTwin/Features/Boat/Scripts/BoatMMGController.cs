@@ -58,6 +58,10 @@ namespace MarineDigitalTwin.Boat
 
         [Header("Trim")]
         [Range(-20f, 20f)] public float trimAngleDeg = 0f;
+
+        [Header("Reverse Limits")]
+        // 후진 최고 속도 상한 (m/s). 25~40hp 소형 보트 후진 = 약 4~5 kn ≈ 2~2.6 m/s
+        public float maxReverseSpeedMs = 2.3f;
         // 양수 = 트림 아웃(선수 상승), 음수 = 트림 인(선수 하강)
 
         // ── Runtime state ─────────────────────────────────────────────────
@@ -84,6 +88,19 @@ namespace MarineDigitalTwin.Boat
             UpdateBodyVelocity();
             (float X, float Y, float N) = ComputeMMGForces();
             ApplyForces(X, Y, N);
+            ClampReverseSpeed();
+        }
+
+        // 후진 최고 속도 하드 캡 — 소형 아웃보드 후진 한계 ≈ 4~5 kn
+        void ClampReverseSpeed()
+        {
+            if (gear != GearState.Reverse) return;
+            if (_u >= -maxReverseSpeedMs) return;  // _u < 0 = 후진, 초과 시 클램프
+
+            Vector3 localVel = transform.InverseTransformDirection(_rb.linearVelocity);
+            // surge 성분만 클램프, sway·vertical 유지
+            localVel.x = Mathf.Min(localVel.x, maxReverseSpeedMs);  // -_u ≥ maxReverse → localVel.x ≤ -maxReverse
+            _rb.linearVelocity = transform.TransformDirection(localVel);
         }
 
         void UpdateBodyVelocity()
@@ -106,16 +123,23 @@ namespace MarineDigitalTwin.Boat
             float U     = Mathf.Max(Mathf.Sqrt(_u * _u + _v * _v), 0.01f);
 
             // ── Hull forces ───────────────────────────────────────────────
-            float beta = Mathf.Atan2(-_v, _u);
+            // 후진 시 _u < 0 → atan2 원점에서 beta ≈ ±π 폭발 방지
+            // 실제 진행 방향(전진=bow, 후진=stern) 기준 편류각으로 통일
+            float uRef = Mathf.Abs(_u);
+            float beta = Mathf.Atan2(-_v, Mathf.Max(uRef, 0.01f));
             float r_nd = _r * Lpp / U;
 
             float X_H = -0.5f * 1025f * Lpp * d * U * U * 0.08f * beta * beta;
-            // Planing 저항 곡선 — hump(8~12kn) 구간 저항 1.8배, 이후 감소
+            // Planing 저항 곡선 — hump(8~12kn) 구간 저항 1.8배, 이후 감소 (전진만 적용)
             float speedKn  = U * 1.944f;
-            float humpMult = 1f + 0.8f * Mathf.Exp(-Mathf.Pow((speedKn - 10f) / 3f, 2f));
+            float humpMult = gear == GearState.Reverse
+                ? 1f
+                : 1f + 0.8f * Mathf.Exp(-Mathf.Pow((speedKn - 10f) / 3f, 2f));
             // 트림 아웃(+) = 저항 감소 최대 30%, 트림 인(-) = 저항 증가 최대 20%
             float trimResist = 1f - trimAngleDeg * 0.015f;
-            float X_RR     = -0.5f * 1025f * Lpp * d * 0.06f * humpMult * trimResist * _u * Mathf.Abs(_u);
+            // 후진 시 선형 저항 3배 (선미 방향 수선 형상 불리 + 추진 효율 저하)
+            float resistCoeff = gear == GearState.Reverse ? 0.18f : 0.06f;
+            float X_RR     = -0.5f * 1025f * Lpp * d * resistCoeff * humpMult * trimResist * _u * Mathf.Abs(_u);
             float Y_H = (Yv * _v + Yr * _r);
             float N_H = (Nv * _v + Nr * _r);
 
@@ -132,24 +156,38 @@ namespace MarineDigitalTwin.Boat
             // ── Prop Walk (우회전 프로펠러 편류) ──────────────────────────
             // 전진: 우현(+sway) 편류, 후진: 좌현(-sway) 편류 + 2배 강도
             float propWalkStrength = gear == GearState.Forward  ?  0.04f :
-                                     gear == GearState.Reverse  ? -0.08f : 0f;
+                                     gear == GearState.Reverse  ? -0.03f : 0f;
             float Y_PW = propWalkStrength * T;
 
             // ── Rudder forces ─────────────────────────────────────────────
-            // 후진 시 70% 감소 + 저속 시 응답 둔화 (3 m/s 이하 선형 감소)
-            float speedFactor  = Mathf.Clamp01(U / 3f);
-            float rudderEffect = (gear == GearState.Reverse ? 0.3f : 1.0f) * speedFactor;
-            float u_R    = U * Mathf.Sqrt(Mathf.Max(eta * (1f + kappa *
-                             (Mathf.Sqrt(1f + 8f * K_T / (Mathf.PI * J * J + 0.01f)) - 1f)) *
-                             (1f + kappa * (Mathf.Sqrt(1f + 8f * K_T /
-                             (Mathf.PI * J * J + 0.01f)) - 1f)), 0.001f));
-            float v_R    = U * (-beta + delta * 0.6f * rudderEffect - r_nd * 0.4f);
-            float alpha_R = Mathf.Atan2(v_R, u_R);
-            float F_N    = 0.5f * 1025f * A_R * f_alpha * Mathf.Sin(alpha_R) * u_R * u_R;
+            float speedFactor = Mathf.Clamp01(U / 3f);
+            float X_R, Y_R, N_R;
 
-            float X_R = -(1f - t_R) * F_N * Mathf.Sin(delta);
-            float Y_R = -(1f + a_H) * F_N * Mathf.Cos(delta);
-            float N_R = -(x_R + a_H * x_H) * F_N * Mathf.Cos(delta);
+            if (gear == GearState.Reverse)
+            {
+                // 후진: 선미가 앞 → 물 흐름 방향 역전
+                // Y_R, N_R 부호 반전 — D키(우현)=우회전, A키(좌현)=좌회전 유지
+                float uRev    = Mathf.Max(Mathf.Abs(_u), 0.1f);
+                float F_N_rev = 0.5f * 1025f * A_R * f_alpha
+                               * Mathf.Sin(delta) * uRev * uRev * speedFactor;
+                X_R = 0f;
+                Y_R =  (1f + a_H) * F_N_rev * Mathf.Cos(delta);   // 부호 반전
+                N_R =  (x_R + a_H * x_H) * F_N_rev * Mathf.Cos(delta); // 부호 반전
+            }
+            else
+            {
+                // 전진: 슬립스트림 기반 u_R 계산
+                float u_R = U * Mathf.Sqrt(Mathf.Max(eta * (1f + kappa *
+                                 (Mathf.Sqrt(1f + 8f * K_T / (Mathf.PI * J * J + 0.01f)) - 1f)) *
+                                 (1f + kappa * (Mathf.Sqrt(1f + 8f * K_T /
+                                 (Mathf.PI * J * J + 0.01f)) - 1f)), 0.001f));
+                float v_R   = U * (-beta + delta * 0.6f * speedFactor - r_nd * 0.4f);
+                float alpha_R = Mathf.Atan2(v_R, u_R);
+                float F_N   = 0.5f * 1025f * A_R * f_alpha * Mathf.Sin(alpha_R) * u_R * u_R;
+                X_R = -(1f - t_R) * F_N * Mathf.Sin(delta);
+                Y_R = -(1f + a_H) * F_N * Mathf.Cos(delta);
+                N_R = -(x_R + a_H * x_H) * F_N * Mathf.Cos(delta);
+            }
 
             return (X_H + X_RR + X_P + X_R, Y_H + Y_PW + Y_R, N_H + N_R);
         }
