@@ -27,6 +27,14 @@ namespace MarineDigitalTwin.Boat
             if (kb == null) return;
 
             HandleThrottleAndGear(kb);
+            if (!_mmg.IsPropulsionReady)
+            {
+                _mmg.rudderAngleDeg = 0f;
+                _mmg.trimAngleDeg = 0f;
+                HandleEmergency(kb);
+                return;
+            }
+
             HandleRudder(kb);
             HandleTrim(kb);
             HandleEmergency(kb);
@@ -34,10 +42,20 @@ namespace MarineDigitalTwin.Boat
 
         void HandleThrottleAndGear(Keyboard kb)
         {
+            if (!_mmg.IsPropulsionReady)
+            {
+                _mmg.SetThrottleInput(0f);
+                _mmg.propellerRPS = 0f;
+                _mmg.gear = GearState.Neutral;
+                return;
+            }
+
             bool wPressed = kb.wKey.isPressed;
             bool sPressed = kb.sKey.isPressed;
+            float throttleInput = wPressed == sPressed ? 0f : wPressed ? 1f : -1f;
+            _mmg.SetThrottleInput(throttleInput);
 
-            if (wPressed)
+            if (throttleInput > 0f)
             {
                 // NEUTRAL → FORWARD 자동 체결 (레버 전진)
                 if (_mmg.gear == GearState.Neutral || _mmg.gear == GearState.Forward)
@@ -51,7 +69,7 @@ namespace MarineDigitalTwin.Boat
                     _mmg.propellerRPS = Mathf.Max(_mmg.propellerRPS - throttleDecay * Time.deltaTime, 0f);
                 }
             }
-            else if (sPressed)
+            else if (throttleInput < 0f)
             {
                 if (_mmg.gear == GearState.Neutral || _mmg.gear == GearState.Reverse)
                 {
@@ -99,6 +117,7 @@ namespace MarineDigitalTwin.Boat
         {
             if (kb.spaceKey.wasPressedThisFrame)
             {
+                _mmg.SetThrottleInput(0f);
                 _mmg.propellerRPS   = 0f;
                 _mmg.rudderAngleDeg = 0f;
                 _mmg.gear           = GearState.Neutral;

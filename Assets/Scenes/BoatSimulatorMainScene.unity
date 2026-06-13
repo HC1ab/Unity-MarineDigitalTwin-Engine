@@ -302,7 +302,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rudderAngleDeg: 0
-  propellerRPS: 32.9
+  propellerRPS: 0
   gear: 1
   trimAngleDeg: 0
 --- !u!114 &89057711

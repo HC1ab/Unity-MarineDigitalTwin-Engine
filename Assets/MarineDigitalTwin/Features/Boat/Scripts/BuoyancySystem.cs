@@ -19,6 +19,12 @@ namespace MarineDigitalTwin.Boat
         [Tooltip("Vertical velocity damping")]
         public float dampingFactor = 10000f;
 
+        [Header("Water Sampling Readiness")]
+        [Tooltip("Minimum consecutive physics frames with valid HDRP samples before propulsion is allowed.")]
+        [Min(1)] public int requiredConsecutiveValidFrames = 5;
+        [Tooltip("Required fraction of configured hull points with valid HDRP samples.")]
+        [Range(0.1f, 1f)] public float requiredValidSampleRatio = 1f;
+
         [Header("Debug")]
         public bool debugLog = false;
 
@@ -26,7 +32,24 @@ namespace MarineDigitalTwin.Boat
         WaterSearchParameters[] _searchParams;
         WaterSearchResult[]     _searchResults;
         float[]                 _lastValidWaterHeight;
+        float[]                 _verticalForces;
         float                   _logTimer;
+        bool                    _loggedInitialSample;
+        bool                    _wasWaterSamplingReady;
+        bool                    _hadValidSamplesLastFrame;
+        bool                    _lastDistributedBuoyancyMode;
+        int                     _consecutiveValidFrames;
+
+        public bool IsWaterSamplingReady =>
+            _consecutiveValidFrames >= requiredConsecutiveValidFrames;
+        public bool HasValidWaterSamplesThisFrame { get; private set; }
+        public bool IsApplyingDistributedBuoyancy { get; private set; }
+        public float LastSampledWaterHeight { get; private set; }
+        public float LastAppliedBuoyancyForce { get; private set; }
+        public float BoatWaterlineHeight { get; private set; }
+        public int ActiveBuoyancyPoints { get; private set; }
+        public int ValidWaterSamples { get; private set; }
+        public int ConfiguredBuoyancyPoints { get; private set; }
 
         void Awake()
         {
@@ -35,6 +58,7 @@ namespace MarineDigitalTwin.Boat
             _searchParams         = new WaterSearchParameters[n];
             _searchResults        = new WaterSearchResult[n];
             _lastValidWaterHeight = new float[n];
+            _verticalForces       = new float[n];
 
             for (int i = 0; i < n; i++)
             {
@@ -51,35 +75,159 @@ namespace MarineDigitalTwin.Boat
             if (hullPoints == null || hullPoints.Length == 0) return;
 
             int  n     = hullPoints.Length;
+            int  validSamples = 0;
+            int  configuredPoints = 0;
+            int  activePoints = 0;
+            float waterlineHeightSum = 0f;
             bool doLog = debugLog && (_logTimer -= Time.fixedDeltaTime) <= 0f;
             if (doLog) _logTimer = 0.5f;
 
             for (int i = 0; i < n; i++)
             {
+                _verticalForces[i] = 0f;
                 var point = hullPoints[i];
                 if (point == null) continue;
+                configuredPoints++;
+                waterlineHeightSum += point.position.y;
 
-                float wh    = GetWaterHeight(point.position, i);
+                float wh    = GetWaterHeight(point.position, i, out bool sampleValid);
+                if (sampleValid)
+                {
+                    validSamples++;
+                    LastSampledWaterHeight = wh;
+                }
                 float depth = Mathf.Max(0f, wh - point.position.y);  // 음수 방지
 
                 if (doLog)
-                    Debug.Log($"[Buoyancy] {point.name}  pointY={point.position.y:F3}  waterH={wh:F3}  depth={depth:F3}");
+                    Debug.Log(
+                        $"[Diag][Buoyancy.Point] point={point.name} pointY={point.position.y:F3}m " +
+                        $"waterHeight={wh:F3}m depth={depth:F3}m sampleValid={sampleValid}"
+                    );
 
                 if (depth <= 0f) continue;  // 수면 위 포인트 → 부력/댐핑 없음
+                activePoints++;
 
                 float buoyancy = depth * buoyancyFactor / n;
                 float vy       = _rb.GetPointVelocity(point.position).y;
                 float damping  = -vy * dampingFactor / n;
+                // Water drag may resist upward motion, but it must not pull a
+                // buoyancy point downward and inject a diving pitch torque.
+                float verticalForce = Mathf.Max(0f, buoyancy + damping);
+                if (!float.IsFinite(verticalForce))
+                {
+                    Debug.LogError(
+                        $"[Diag][Buoyancy.InvalidForce] point={point.name} depth={depth} " +
+                        $"buoyancy={buoyancy} damping={damping}"
+                    );
+                    continue;
+                }
+                _verticalForces[i] = verticalForce;
+            }
+
+            int requiredSamples = Mathf.Max(
+                1,
+                Mathf.CeilToInt(configuredPoints * requiredValidSampleRatio)
+            );
+            HasValidWaterSamplesThisFrame =
+                configuredPoints > 0 && validSamples >= requiredSamples;
+            ValidWaterSamples = validSamples;
+            ConfiguredBuoyancyPoints = configuredPoints;
+            ActiveBuoyancyPoints = activePoints;
+            BoatWaterlineHeight = configuredPoints > 0
+                ? waterlineHeightSum / configuredPoints
+                : transform.position.y;
+            _consecutiveValidFrames = HasValidWaterSamplesThisFrame
+                ? _consecutiveValidFrames + 1
+                : 0;
+
+            ApplyBuoyancyForces(HasValidWaterSamplesThisFrame && IsWaterSamplingReady);
+
+            if (IsWaterSamplingReady && !_wasWaterSamplingReady)
+            {
+                Debug.Log(
+                    $"[Diag][Buoyancy.SamplingReady] consecutiveFrames={_consecutiveValidFrames} " +
+                    $"validSamples={validSamples}/{configuredPoints}, " +
+                    $"activePoints={activePoints} waterHeight={LastSampledWaterHeight:F3}m " +
+                    $"boatWaterline={BoatWaterlineHeight:F3}m " +
+                    $"rigidbodyVelocity={_rb.linearVelocity}"
+                );
+            }
+            else if (!HasValidWaterSamplesThisFrame && !_loggedInitialSample)
+            {
+                _loggedInitialSample = true;
+                Debug.LogWarning(
+                    $"[Diag][Buoyancy.SamplingInvalid] phase=startup " +
+                    $"validSamples={validSamples}/{configuredPoints}, required={requiredSamples}. " +
+                    $"Using last valid/fallback height={LastSampledWaterHeight:F3} m."
+                );
+            }
+            else if (!HasValidWaterSamplesThisFrame && _wasWaterSamplingReady)
+            {
+                Debug.LogWarning(
+                    $"[Diag][Buoyancy.SamplingLost] propulsionLocked=true " +
+                    $"validSamples={validSamples}/{configuredPoints}, required={requiredSamples}, " +
+                    $"waterHeight={LastSampledWaterHeight:F3} m, velocity={_rb.linearVelocity}"
+                );
+            }
+            else if (HasValidWaterSamplesThisFrame && !_hadValidSamplesLastFrame && _loggedInitialSample)
+            {
+                Debug.Log(
+                    $"[Diag][Buoyancy.SamplingRecovered] validSamples={validSamples}/{configuredPoints} " +
+                    $"activePoints={activePoints} waterHeight={LastSampledWaterHeight:F3}m"
+                );
+            }
+
+            _wasWaterSamplingReady = IsWaterSamplingReady;
+            _hadValidSamplesLastFrame = HasValidWaterSamplesThisFrame;
+        }
+
+        void ApplyBuoyancyForces(bool distributeAcrossHull)
+        {
+            float totalVerticalForce = 0f;
+            for (int i = 0; i < _verticalForces.Length; i++)
+                totalVerticalForce += _verticalForces[i];
+
+            IsApplyingDistributedBuoyancy = distributeAcrossHull;
+            LastAppliedBuoyancyForce = totalVerticalForce;
+            if (IsApplyingDistributedBuoyancy != _lastDistributedBuoyancyMode)
+            {
+                string applicationPosition = distributeAcrossHull
+                    ? $"hullPoints:{ActiveBuoyancyPoints}"
+                    : $"COM:{_rb.worldCenterOfMass}";
+                Debug.Log(
+                    $"[Diag][Buoyancy.ApplicationMode] mode=" +
+                    $"{(distributeAcrossHull ? "distributed" : "center")} " +
+                    $"force={totalVerticalForce:F1}N applicationPosition={applicationPosition}"
+                );
+                _lastDistributedBuoyancyMode = IsApplyingDistributedBuoyancy;
+            }
+
+            if (!distributeAcrossHull)
+            {
+                // Until every hull point is sampled consistently, apply the
+                // same net support at the COM so partial samples cannot roll
+                // or pitch the vessel into the water.
+                _rb.AddForce(Vector3.up * totalVerticalForce, ForceMode.Force);
+                return;
+            }
+
+            for (int i = 0; i < hullPoints.Length; i++)
+            {
+                Transform point = hullPoints[i];
+                if (point == null || _verticalForces[i] <= 0f)
+                    continue;
 
                 _rb.AddForceAtPosition(
-                    Vector3.up * (buoyancy + damping),
+                    Vector3.up * _verticalForces[i],
                     point.position,
-                    ForceMode.Force);
+                    ForceMode.Force
+                );
             }
         }
 
-        float GetWaterHeight(Vector3 worldPos, int idx)
+        float GetWaterHeight(Vector3 worldPos, int idx, out bool sampleValid)
         {
+            sampleValid = false;
             if (waterSurface == null) return _lastValidWaterHeight[idx];
 
             _searchParams[idx].startPositionWS   = _searchResults[idx].candidateLocationWS;
@@ -98,9 +246,11 @@ namespace MarineDigitalTwin.Boat
             }
 
             float h = _searchResults[idx].projectedPositionWS.y;
-            if (float.IsNaN(h) || Mathf.Abs(h) > 100f)
+            float surfaceY = waterSurface.transform.position.y;
+            if (!float.IsFinite(h) || Mathf.Abs(h - surfaceY) > 100f)
                 return _lastValidWaterHeight[idx];
 
+            sampleValid = true;
             _lastValidWaterHeight[idx] = h;
             return h;
         }

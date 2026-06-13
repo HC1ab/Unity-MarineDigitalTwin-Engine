@@ -30,28 +30,30 @@ namespace MarineDigitalTwin.Environment
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                Debug.LogWarning(
-                    $"[해양 API 실패] 기존 바다 상태 유지: {request.error}"
-                );
+                Debug.LogWarning($"[Diag][Environment.ApiFailure] preservingPreviousState=true error={request.error}");
                 yield break;
             }
 
+            string rawJson = request.downloadHandler.text;
+            Debug.Log($"[Diag][Environment.RawApi] json={rawJson}");
+
             MarineApiResponse response =
                 JsonUtility.FromJson<MarineApiResponse>(
-                    request.downloadHandler.text
+                    rawJson
                 );
 
             if (response == null || !response.success || response.data == null)
             {
-                Debug.LogWarning("[해양 API 값 없음] 기존 바다 상태 유지");
+                Debug.LogWarning("[Diag][Environment.InvalidResponse] preservingPreviousState=true");
                 yield break;
             }
 
             Debug.Log(
-                $"[해양 API 수신] 파고={response.data.waveHeight}, " +
-                $"풍속={response.data.windSpeed}, " +
-                $"풍향={response.data.windDirection}, " +
-                $"조위={response.data.tideLevel}"
+                $"[Diag][Environment.Parsed] " +
+                $"waveHeight={response.data.waveHeight:F3} m, " +
+                $"windSpeed={response.data.windSpeed:F3} m/s, " +
+                $"windDirection={response.data.windDirection:F1} deg (from), " +
+                $"tideLevel={response.data.tideLevel} cm"
             );
 
             oceanController.Apply(response.data);
@@ -69,6 +71,8 @@ namespace MarineDigitalTwin.Environment
     [System.Serializable]
     public class MarineEnvironmentData
     {
+        // API contract units: wave height m, wind speed m/s, wind direction
+        // meteorological degrees (from), tide level cm.
         public float waveHeight;
         public float windSpeed;
         public float windDirection;
