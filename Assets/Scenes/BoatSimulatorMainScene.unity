@@ -296,6 +296,8 @@ MonoBehaviour:
   startupSafetySeconds: 3
   startupMaxVerticalSpeed: 2
   startupMaxAngularSpeed: 1
+  requiredConsecutiveValidFrames: 5
+  requiredValidSampleRatio: 1
   debugLog: 1
 --- !u!114 &89057710
 MonoBehaviour:
@@ -313,6 +315,17 @@ MonoBehaviour:
   propellerRPS: 0
   gear: 1
   trimAngleDeg: 0
+  startupStabilizationSeconds: 1.5
+  startupMaxDownwardSpeed: 0.25
+  startupMaxTiltDegrees: 30
+  startupMaxTiltAngularSpeed: 0.35
+  startupDiagnosticSeconds: 3
+  propulsionRampSeconds: 2
+  propulsionRampMaxYawSpeed: 0.5
+  orientationWarningDegrees: 30
+  angularVelocityWarningRadPerSec: 2
+  accelerationWarningMps2: 10
+  throttleLogThreshold: 0.25
 --- !u!114 &89057711
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -346,6 +359,7 @@ MonoBehaviour:
   rpsText: {fileID: 494095048}
   rudderText: {fileID: 200403013}
   speedText: {fileID: 2109975135}
+  environmentClient: {fileID: 0}
 --- !u!1 &200403011
 GameObject:
   m_ObjectHideFlags: 0
@@ -1506,7 +1520,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   waterSurface: {fileID: 1994641259}
-  referenceTideLevelCm: 0
+  referenceTideLevelMeter: 0
   tideScale: 1
   depthMapManager: {fileID: 1203571345}
   groundingDraftMeters: 0.5
@@ -1527,37 +1541,18 @@ MonoBehaviour:
   refreshSeconds: 60
   requestTimeoutSeconds: 5
   oceanController: {fileID: 1203571341}
---- !u!114 &1203571344
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1203571340}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8a82c128f0a54bdca727a785b0cc41cd, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  apiUrl: http://localhost:8080/api/v1/environment/bathymetry
-  requestTimeoutSeconds: 10
-  depthMapManager: {fileID: 1203571345}
---- !u!114 &1203571345
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1203571340}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c08c5db87c2b4f81aaf8415b72df7240, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  bathymetryClient: {fileID: 1203571344}
-  boat: {fileID: 89057708}
-  statusUpdateSeconds: 0.5
-  logStatus: 1
+  overrideWaveHeight: 0
+  manualWaveHeight: 0.3
+  overrideWavePeriod: 0
+  manualWavePeriod: 5
+  overrideWaveDirection: 0
+  manualWaveDirection: 180
+  overrideWindSpeed: 0
+  manualWindSpeed: 9.1
+  overrideWindDirection: 0
+  manualWindDirection: 180
+  overrideTideLevel: 0
+  manualTideLevelMeter: 1
 --- !u!4 &1203571343
 Transform:
   m_ObjectHideFlags: 0
@@ -1573,6 +1568,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1203571344
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1203571340}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a82c128f0a54bdca727a785b0cc41cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  apiUrl: http://localhost:8080/api/v1/environment/bathymetry
+  requestTimeoutSeconds: 10
+  depthMapManager: {fileID: 1203571345}
+--- !u!114 &1203571345
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1203571340}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c08c5db87c2b4f81aaf8415b72df7240, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bathymetryClient: {fileID: 1203571344}
+  boat: {fileID: 89057708}
+  statusUpdateSeconds: 0.5
+  logStatus: 1
 --- !u!1001 &1245938823
 PrefabInstance:
   m_ObjectHideFlags: 0

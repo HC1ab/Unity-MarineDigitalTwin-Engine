@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Serialization;
 
 namespace MarineDigitalTwin.Environment
 {
@@ -7,8 +8,6 @@ namespace MarineDigitalTwin.Environment
     {
         private const float MetersPerSecondToKilometersPerHour = 3.6f;
         //풍속을 m/s 에서 km/h로 변환하기 위한 상수. 1 m/s는 3.6 km/h입니다.
-        private const float CentimetersPerMeter = 100f;
-        //조위 단위를 cm에서 m로 변환하기 위한 상수. 1 m는 100 cm입니다.
         private const float HdrpMaxSwellWindSpeedKmh = 250f;
         //HDRP 큰 파도에 적용할 최대 풍속을 250 km/h로 제한 
         private const float HdrpMaxRippleWindSpeedKmh = 15f;
@@ -17,11 +16,10 @@ namespace MarineDigitalTwin.Environment
         //제어할 HDRP 수면 오브젝트를 Inspector에서 연결합니다.
 
         [Header("Tide")]
-        [SerializeField] private float referenceTideLevelCm = 0f;
+        [FormerlySerializedAs("referenceTideLevelCm")]
+        [SerializeField] private float referenceTideLevelMeter = 0f;
         [SerializeField] private float tideScale = 1f;
-        //referenceTideLevelCm은 기준 조위이고, tideScale은 조위 변화량 배율입니다.
-        private float initialOceanY;
-        //게임 시작 시 수면의 원래 Y 위치를 저장합니다.
+        private Vector3 initialOceanPosition;
 
         [Header("Bathymetry")]
         [SerializeField] private DepthMapManager depthMapManager;
@@ -47,6 +45,7 @@ namespace MarineDigitalTwin.Environment
         public bool IsGroundingRisk =>
             float.IsFinite(CurrentEffectiveDepth) &&
             CurrentEffectiveDepth <= groundingDraftMeters + minimumUnderKeelClearanceMeters;
+        public OceanEnvironmentState CurrentState { get; } = new OceanEnvironmentState();
 
         //초기화
         //
@@ -59,40 +58,40 @@ namespace MarineDigitalTwin.Environment
                 return;
             }
 
-            initialOceanY = waterSurface.transform.position.y;
-            //조위 계산의 기준이 될 초기 수면 높이를 저장합니다. 
+            initialOceanPosition = waterSurface.transform.position;
         }
 
-        public void Apply(MarineEnvironmentData data) //외부에서 받은 환경 데이터를 수면에 적용하는 핵심 함수입니다.
+        public void ApplyEnvironment(OceanEnvironmentState state)
         {
-            if (waterSurface == null || data == null) //수면이나 데이터가 없다면 실행을 종료합니다.
+            if (waterSurface == null || state == null)
                 return;
-            if (!float.IsFinite(data.windSpeed) ||
-                !float.IsFinite(data.windDirection) ||
-                !float.IsFinite(data.waveHeight))
+            if (!state.HasFiniteEnvironmentValues)
             {
                 Debug.LogError(
-                    $"[Diag][Environment.InvalidValues] windSpeed={data.windSpeed} " +
-                    $"windDirection={data.windDirection} waveHeight={data.waveHeight} " +
-                    $"tideLevel={data.tideLevel}"
+                    $"[Diag][Environment.InvalidValues] windSpeed={state.WindSpeed} " +
+                    $"windDirection={state.WindDirection} waveHeight={state.WaveHeight} " +
+                    $"wavePeriod={state.WavePeriod} waveDirection={state.WaveDirection} " +
+                    $"tideLevelMeter={state.TideLevelMeter}"
                 );
                 return;
-            } //풍속, 풍향, 파고가 NaN이나 무한대인지 검사합니다. 비정상 값이면 적용하지 않습니다.
-              //다만 실제 조위 계산에 사용하는 data.tideLevel은 현재 검사 대상에서 빠져 있습니다.
-            if (data.windSpeed < 0f || data.waveHeight < 0f) //풍속 또는 파고가 음수면 경고
+            }
+            if (state.WindSpeed < 0f || state.WaveHeight < 0f)
             {
                 Debug.LogWarning(
-                    $"[Diag][Environment.OutOfRange] windSpeed={data.windSpeed:F3}m/s " +
-                    $"waveHeight={data.waveHeight:F3}m"
+                    $"[Diag][Environment.OutOfRange] windSpeed={state.WindSpeed:F3}m/s " +
+                    $"waveHeight={state.WaveHeight:F3}m"
                 );
             }
 
-            
-            float direction = (data.windDirection + 180f) % 360f;
+            CurrentState.CopyFrom(state);
+            CurrentState.ChartDepth = CurrentChartDepth;
+            CurrentState.EffectiveDepth = CurrentEffectiveDepth;
+
+            float direction = (state.WindDirection + 180f) % 360f;
             //기상 데이터의 풍향은 바람이 불어오는 방향입니다.
             // HDRP에 적용하기 위해 바람이 향하는 방향으로 180도 전환합니다.
             float windSpeedKmh =
-                Mathf.Max(0f, data.windSpeed) * MetersPerSecondToKilometersPerHour;
+                Mathf.Max(0f, state.WindSpeed) * MetersPerSecondToKilometersPerHour;
             //음수 풍속을 0으로 처리하고 m/s를 km/h로 변환합니다.
             float appliedSwellWindKmh =
                 Mathf.Clamp(windSpeedKmh, 0f, HdrpMaxSwellWindSpeedKmh);
@@ -110,20 +109,22 @@ namespace MarineDigitalTwin.Environment
             // so preserve the configured dimmers instead of applying an invalid
             // metre-to-dimmer conversion. Normalized wind drives the HDRP waves.
             float tideOffsetMeters =
-                ((data.tideLevel - referenceTideLevelCm) / CentimetersPerMeter) *
-                tideScale;
-
-            Vector3 position = waterSurface.transform.position;
-            position.y = initialOceanY + tideOffsetMeters;
-            waterSurface.transform.position = position;
+                (state.TideLevelMeter - referenceTideLevelMeter) * tideScale;
+            Vector3 targetPosition = initialOceanPosition + Vector3.up * tideOffsetMeters;
+            waterSurface.transform.SetPositionAndRotation(
+                targetPosition,
+                waterSurface.transform.rotation
+            );
 
             Debug.Log(
                 $"[Diag][Environment.Normalized] " +
-                $"windRaw={data.windSpeed:F3} m/s, " +
+                $"windRaw={state.WindSpeed:F3} m/s, " +
                 $"windHDRP={windSpeedKmh:F3} km/h, " +
-                $"tideRaw={data.tideLevel} cm, " +
+                $"tideRaw={state.TideLevelMeter:F3} m, " +
                 $"tideOffset={tideOffsetMeters:F3} m, " +
-                $"waveObserved={data.waveHeight:F3} m"
+                $"waveObserved={state.WaveHeight:F3} m, " +
+                $"wavePeriod={state.WavePeriod:F3} s, " +
+                $"waveDirection={state.WaveDirection:F1} deg (from)"
             );
 
             Debug.Log(
