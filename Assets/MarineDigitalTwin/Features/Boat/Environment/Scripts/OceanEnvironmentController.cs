@@ -23,6 +23,31 @@ namespace MarineDigitalTwin.Environment
         private float initialOceanY;
         //게임 시작 시 수면의 원래 Y 위치를 저장합니다.
 
+        [Header("Bathymetry")]
+        [SerializeField] private DepthMapManager depthMapManager;
+        [SerializeField, Min(0f)] private float groundingDraftMeters = 0.5f;
+        [SerializeField, Min(0f)] private float minimumUnderKeelClearanceMeters = 0.3f;
+
+        public float CurrentChartDepth => depthMapManager != null
+            ? depthMapManager.CurrentChartDepth
+            : float.NaN;
+        public float CurrentEffectiveDepth => depthMapManager != null
+            ? depthMapManager.CurrentEffectiveDepth
+            : float.NaN;
+        public float CurrentTideLevelMeter => depthMapManager != null
+            ? depthMapManager.CurrentTideLevelMeter
+            : float.NaN;
+        public float SimulationRadius => depthMapManager != null
+            ? depthMapManager.SimulationRadius
+            : 0f;
+        public float AiryWaveWaterDepth => CurrentEffectiveDepth;
+        public float ShoalingBreakingWaterDepth => CurrentEffectiveDepth;
+        public bool IsOutsideSimulationArea =>
+            depthMapManager == null || depthMapManager.IsOutsideSimulationArea;
+        public bool IsGroundingRisk =>
+            float.IsFinite(CurrentEffectiveDepth) &&
+            CurrentEffectiveDepth <= groundingDraftMeters + minimumUnderKeelClearanceMeters;
+
         //초기화
         //
         private void Awake() //컴포넌트가 시작될 때 한 번 실행됩니다.
