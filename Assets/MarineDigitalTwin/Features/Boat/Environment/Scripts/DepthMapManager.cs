@@ -141,3 +141,8 @@ namespace MarineDigitalTwin.Environment
         }
     }
 }
+//선박의 현재 X, Z 좌표와 가장 가까운 수심 포인트를 찾습니다.
+//다음 계산을 수행합니다.
+//effectiveDepth = chartDepth + tideLevelMeter
+//선박이 API의 시뮬레이션 반경 밖인지 확인합니다.
+//0.5초마다 현재 수심 정보를 콘솔에 출력합니다.

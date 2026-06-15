@@ -119,3 +119,8 @@ namespace MarineDigitalTwin.Environment
         }
     }
 }
+//씬 시작 시 아래 API를 한 번 호출합니다.
+//GET http://localhost:8080/api/v1/environment/bathymetry
+//응답을 파싱하여 DepthMapManager에 전달합니다.
+//API 호출 실패 시 기존 성공 데이터를 유지합니다.
+//RefreshBathymetry()로 수동 재호출할 수 있습니다.
