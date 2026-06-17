@@ -11,7 +11,9 @@ namespace MarineDigitalTwin.Boat
         public TMP_Text rpsText;
         public TMP_Text rudderText;
         public TMP_Text speedText;
+        public TMP_Text radarText;
         public MarineEnvironmentClient environmentClient;
+        public RadarSensorArray radarSensor;
 
         Rigidbody _rb;
 
@@ -20,6 +22,8 @@ namespace MarineDigitalTwin.Boat
             _rb = mmg.GetComponent<Rigidbody>();
             if (environmentClient == null)
                 environmentClient = FindFirstObjectByType<MarineEnvironmentClient>();
+            if (radarSensor == null)
+                radarSensor = mmg.GetComponent<RadarSensorArray>();
             if (speedText != null)
             {
                 speedText.rectTransform.SetSizeWithCurrentAnchors(
@@ -45,6 +49,16 @@ namespace MarineDigitalTwin.Boat
             speedText.text = environmentClient == null
                 ? $"Speed: {knots:F1} kn"
                 : $"Speed: {knots:F1} kn\n\n{environmentClient.GetDebugDisplay()}";
+
+            if (radarText != null && radarSensor != null)
+            {
+                var r = radarSensor.RawDistances;
+                radarText.text =
+                    $"RADAR (m)\n" +
+                    $"  0°:{r[0],6:F1}  40°:{r[1],6:F1}  80°:{r[2],6:F1}\n" +
+                    $"120°:{r[3],6:F1} 160°:{r[4],6:F1} 200°:{r[5],6:F1}\n" +
+                    $"240°:{r[6],6:F1} 280°:{r[7],6:F1} 320°:{r[8],6:F1}";
+            }
         }
     }
 }
