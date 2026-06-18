@@ -120,7 +120,6 @@ namespace MarineDigitalTwin.Boat
                     _targetIdx = next;
                 }
                 wp = _route.Get(_targetIdx);
-                Debug.Log($"[NPC] 웨이포인트 {_targetIdx}/{_route.Count} ({wp.type})");
                 _gen?.UpdateTargetPillar(_targetIdx);
             }
 

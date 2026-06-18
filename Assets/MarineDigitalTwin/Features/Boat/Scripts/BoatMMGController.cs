@@ -86,6 +86,8 @@ namespace MarineDigitalTwin.Boat
         [Min(0f)] public float angularVelocityWarningRadPerSec = 2f;
         [Min(0f)] public float accelerationWarningMps2 = 10f;
         [Range(0.01f, 1f)] public float throttleLogThreshold = 0.25f;
+        [Tooltip("진단 로그 출력 여부 (API 테스트 시 false 권장)")]
+        public bool enableDiagnosticLogs = false;
 
         // ── Runtime state ─────────────────────────────────────────────────
         float _u, _v, _r;   // surge, sway, yaw rate (body frame)
@@ -412,6 +414,7 @@ namespace MarineDigitalTwin.Boat
 
         void LogStartupDiagnostics()
         {
+            if (!enableDiagnosticLogs) return;
             if (Time.time > startupDiagnosticSeconds ||
                 Time.time < _nextStartupDiagnosticTime)
                 return;
@@ -449,6 +452,7 @@ namespace MarineDigitalTwin.Boat
 
         void LogPropulsionDiagnostics()
         {
+            if (!enableDiagnosticLogs) return;
             bool gearChanged = gear != _lastLoggedGear;
             bool throttleChanged =
                 Mathf.Abs(ThrottleInput - _lastLoggedThrottle) >= throttleLogThreshold;

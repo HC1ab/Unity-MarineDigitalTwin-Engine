@@ -109,7 +109,7 @@ namespace MarineDigitalTwin.Boat
                 _lastValidWaterHeight[i] = fallbackWaterLevel;
             }
 
-            Debug.Log(
+            if (debugLog) Debug.Log(
                 $"[Diag][Buoyancy.SceneBinding] boat={name}#{GetInstanceID()} " +
                 $"waterSurface={_waterSurfaceIdentity} configuredHullPoints={n} " +
                 $"scriptInteractions={(waterSurface != null && waterSurface.scriptInteractions)} " +
@@ -200,39 +200,23 @@ namespace MarineDigitalTwin.Boat
             if (doLog)
                 LogPointTrace();
 
-            if (IsWaterSamplingReady && !_wasWaterSamplingReady)
+            if (debugLog)
             {
-                Debug.Log(
-                    $"[Diag][Buoyancy.SamplingReady] consecutiveFrames={_consecutiveValidFrames} " +
-                    $"validSamples={validSamples}/{configuredPoints}, " +
-                    $"activePoints={activePoints} waterHeight={LastSampledWaterHeight:F3}m " +
-                    $"boatWaterline={BoatWaterlineHeight:F3}m " +
-                    $"rigidbodyVelocity={_rb.linearVelocity}"
-                );
+                if (IsWaterSamplingReady && !_wasWaterSamplingReady)
+                    Debug.Log($"[Diag][Buoyancy.SamplingReady] consecutiveFrames={_consecutiveValidFrames} validSamples={validSamples}/{configuredPoints} activePoints={activePoints} waterHeight={LastSampledWaterHeight:F3}m");
+                else if (!HasValidWaterSamplesThisFrame && !_loggedInitialSample)
+                {
+                    _loggedInitialSample = true;
+                    Debug.LogWarning($"[Diag][Buoyancy.SamplingInvalid] validSamples={validSamples}/{configuredPoints}");
+                }
+                else if (!HasValidWaterSamplesThisFrame && _wasWaterSamplingReady)
+                    Debug.LogWarning($"[Diag][Buoyancy.SamplingLost] validSamples={validSamples}/{configuredPoints}");
+                else if (HasValidWaterSamplesThisFrame && !_hadValidSamplesLastFrame && _loggedInitialSample)
+                    Debug.Log($"[Diag][Buoyancy.SamplingRecovered] validSamples={validSamples}/{configuredPoints}");
             }
             else if (!HasValidWaterSamplesThisFrame && !_loggedInitialSample)
             {
-                _loggedInitialSample = true;
-                Debug.LogWarning(
-                    $"[Diag][Buoyancy.SamplingInvalid] phase=startup " +
-                    $"validSamples={validSamples}/{configuredPoints}, required={requiredSamples}. " +
-                    $"Using last valid/fallback height={LastSampledWaterHeight:F3} m."
-                );
-            }
-            else if (!HasValidWaterSamplesThisFrame && _wasWaterSamplingReady)
-            {
-                Debug.LogWarning(
-                    $"[Diag][Buoyancy.SamplingLost] propulsionLocked=true " +
-                    $"validSamples={validSamples}/{configuredPoints}, required={requiredSamples}, " +
-                    $"waterHeight={LastSampledWaterHeight:F3} m, velocity={_rb.linearVelocity}"
-                );
-            }
-            else if (HasValidWaterSamplesThisFrame && !_hadValidSamplesLastFrame && _loggedInitialSample)
-            {
-                Debug.Log(
-                    $"[Diag][Buoyancy.SamplingRecovered] validSamples={validSamples}/{configuredPoints} " +
-                    $"activePoints={activePoints} waterHeight={LastSampledWaterHeight:F3}m"
-                );
+                _loggedInitialSample = true; // 플래그 유지
             }
 
             _wasWaterSamplingReady = IsWaterSamplingReady;
@@ -252,12 +236,7 @@ namespace MarineDigitalTwin.Boat
                 for (int i = 0; i < _verticalForces.Length; i++)
                     _verticalForces[i] *= scale;
                 totalVerticalForce = maxTotalBuoyancyForce;
-                Debug.LogWarning(
-                    $"[Diag][Buoyancy.TotalForceClamped] frame={Time.frameCount} " +
-                    $"boatY={transform.position.y:F3}m from={unclampedTotalVerticalForce:F1}N " +
-                    $"to={totalVerticalForce:F1}N scale={scale:F4} " +
-                    $"velocityY={_rb.linearVelocity.y:F3}m/s"
-                );
+                if (debugLog) Debug.LogWarning($"[Diag][Buoyancy.TotalForceClamped] from={unclampedTotalVerticalForce:F1}N to={totalVerticalForce:F1}N");
             }
 
             IsApplyingDistributedBuoyancy = distributeAcrossHull;
@@ -267,11 +246,7 @@ namespace MarineDigitalTwin.Boat
                 string applicationPosition = distributeAcrossHull
                     ? $"hullPoints:{ActiveBuoyancyPoints}"
                     : $"COM:{_rb.worldCenterOfMass}";
-                Debug.Log(
-                    $"[Diag][Buoyancy.ApplicationMode] mode=" +
-                    $"{(distributeAcrossHull ? "distributed" : "center")} " +
-                    $"force={totalVerticalForce:F1}N applicationPosition={applicationPosition}"
-                );
+                if (debugLog) Debug.Log($"[Diag][Buoyancy.ApplicationMode] mode={(distributeAcrossHull ? "distributed" : "center")} force={totalVerticalForce:F1}N");
                 _lastDistributedBuoyancyMode = IsApplyingDistributedBuoyancy;
             }
 
@@ -389,12 +364,7 @@ namespace MarineDigitalTwin.Boat
 
             if (rejectionReason != null)
             {
-                Debug.LogWarning(
-                    $"[Diag][Buoyancy.SampleRejected] frame={Time.frameCount} index={idx} " +
-                    $"reason={rejectionReason} sampledHeight={h} " +
-                    $"surfaceY={surfaceY:F3}m lastValidHeight={_lastValidWaterHeight[idx]:F3}m " +
-                    $"boatY={transform.position.y:F3}m"
-                );
+                if (debugLog) Debug.LogWarning($"[Diag][Buoyancy.SampleRejected] idx={idx} reason={rejectionReason}");
                 return _lastValidWaterHeight[idx];
             }
 

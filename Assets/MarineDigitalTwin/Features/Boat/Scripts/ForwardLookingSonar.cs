@@ -98,9 +98,7 @@ namespace MarineDigitalTwin.Boat
             Collider[] hits = Physics.OverlapSphere(origin, maxRange, obstacleMask,
                                                     QueryTriggerInteraction.Ignore);
 
-            // 디버그: 1초마다 로그
-            if (Time.time % 1f < scanInterval)
-                Debug.Log($"[Sonar] origin={origin} bowDir={bowDir} hits={hits.Length} mask={obstacleMask.value}");
+
 
             var beams = new SonarBeam[BeamCount];
 
