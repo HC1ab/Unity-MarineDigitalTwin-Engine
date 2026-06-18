@@ -143,7 +143,7 @@ namespace MarineDigitalTwin.Boat
             _rb.automaticInertiaTensor = false;
             _rb.inertiaTensor = new Vector3(1063f, 7000f, 7443f);
             _rb.inertiaTensorRotation = Quaternion.identity;
-            _runtimeConstraints = RigidbodyConstraints.None;
+            _runtimeConstraints = RigidbodyConstraints.FreezeRotationX | RigidbodyConstraints.FreezeRotationZ;
             _rb.constraints = _runtimeConstraints |
                               RigidbodyConstraints.FreezeRotationX |
                               RigidbodyConstraints.FreezeRotationZ;

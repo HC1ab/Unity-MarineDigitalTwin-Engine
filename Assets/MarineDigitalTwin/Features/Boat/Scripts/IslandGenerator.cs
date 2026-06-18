@@ -136,6 +136,7 @@ namespace MarineDigitalTwin.Boat
 
             var mc = go.AddComponent<MeshCollider>();
             mc.sharedMesh = mesh;
+            mc.isTrigger = true; // 섬 도형은 시각 전용 — 실제 충돌은 해안 암초 SphereCollider 담당
 
             _spawned.Add(go);
             return go;
@@ -251,15 +252,15 @@ namespace MarineDigitalTwin.Boat
             var go = new GameObject(goName);
             go.layer = obstacleLayer;
             go.transform.SetParent(transform);
-            go.transform.position = pos + Vector3.up * (size * 0.3f);
+            go.transform.position  = pos + Vector3.up * (size * 0.15f);
+            go.transform.localScale = new Vector3(size, size * 0.3f, size);
 
-            // 납작한 타원형 콜라이더 (암초 형태)
+            // SphereCollider radius=0.5 → transform scale로 납작 타원형 콜라이더
             var col = go.AddComponent<SphereCollider>();
-            col.radius = size * 0.5f;
+            col.radius = 0.5f;
 
-            // 시각 메쉬 — 납작한 구
             var mf = go.AddComponent<MeshFilter>();
-            mf.sharedMesh = BuildReefMesh(size);
+            mf.sharedMesh = BuildReefMesh();
 
             var mr = go.AddComponent<MeshRenderer>();
             mr.sharedMaterial = islandMaterial != null
@@ -269,21 +270,11 @@ namespace MarineDigitalTwin.Boat
             _spawned.Add(go);
         }
 
-        Mesh BuildReefMesh(float size)
+        Mesh BuildReefMesh()
         {
-            // Unity 기본 구 대신 납작한 타원 (Y 스케일 0.3)
             var go   = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             var mesh = Mesh.Instantiate(go.GetComponent<MeshFilter>().sharedMesh);
             DestroyImmediate(go);
-
-            var verts = mesh.vertices;
-            for (int i = 0; i < verts.Length; i++)
-                verts[i] = new Vector3(verts[i].x * size * 0.5f,
-                                       verts[i].y * size * 0.15f,  // 납작하게
-                                       verts[i].z * size * 0.5f);
-            mesh.vertices = verts;
-            mesh.RecalculateNormals();
-            mesh.RecalculateBounds();
             return mesh;
         }
 
