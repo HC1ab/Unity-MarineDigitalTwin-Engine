@@ -123,6 +123,7 @@ namespace MarineDigitalTwin.Boat
             _buoyancy != null &&
             _buoyancy.IsWaterSamplingReady;
         public float ThrottleInput { get; private set; }
+        public float GetSpeedKn() => Mathf.Sqrt(_u * _u + _v * _v) * 1.944f;
 
         public void SetThrottleInput(float value)
         {

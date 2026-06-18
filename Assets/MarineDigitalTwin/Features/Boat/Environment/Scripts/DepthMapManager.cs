@@ -9,6 +9,11 @@ namespace MarineDigitalTwin.Environment
         [SerializeField, Min(0.1f)] private float statusUpdateSeconds = 0.5f;
         [SerializeField] private bool logStatus = true;
 
+        [Header("Seabed Raycast Fallback")]
+        [SerializeField] private bool  useSeabedRaycast  = true;
+        [SerializeField] private float raycastStartHeight = 50f;   // 위에서 쏠 높이
+        [SerializeField] private LayerMask seabedLayerMask = 1 << 9; // Layer 9
+
         private BathymetryData bathymetry;
         private float nextStatusUpdateTime;
         private bool hasOutsideState;
@@ -61,7 +66,10 @@ namespace MarineDigitalTwin.Environment
         public float GetNearestDepth(Vector3 worldPosition)
         {
             DepthPoint nearest = FindNearestPoint(worldPosition);
-            return nearest != null ? nearest.depth : float.NaN;
+            if (nearest != null) return nearest.depth;
+
+            // API 데이터 없으면 Seabed 메쉬 Raycast fallback
+            return useSeabedRaycast ? RaycastSeabedDepth(worldPosition) : float.NaN;
         }
 
         public float GetEffectiveDepth(Vector3 worldPosition)
@@ -70,6 +78,19 @@ namespace MarineDigitalTwin.Environment
             return float.IsFinite(chartDepth)
                 ? chartDepth + CurrentTideLevelMeter
                 : float.NaN;
+        }
+
+        float RaycastSeabedDepth(Vector3 worldPosition)
+        {
+            var origin = new Vector3(worldPosition.x, raycastStartHeight, worldPosition.z);
+            if (Physics.Raycast(origin, Vector3.down, out RaycastHit hit,
+                raycastStartHeight + 100f, seabedLayerMask, QueryTriggerInteraction.Collide))
+            {
+                // 수심 = 수면(Y=0) - 해저 Y
+                float depth = -hit.point.y;
+                return Mathf.Max(depth, 0f);
+            }
+            return float.NaN;
         }
 
         public bool IsInsideSimulationRadius(Vector3 worldPosition)

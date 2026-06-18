@@ -130,7 +130,6 @@ namespace MarineDigitalTwin.Boat
             float waterlineHeightSum = 0f;
             bool doLog = debugLog && (_logTimer -= Time.fixedDeltaTime) <= 0f;
             if (doLog) _logTimer = 0.5f;
-            bool traceStartup = Time.time <= startupSafetySeconds;
 
             for (int i = 0; i < n; i++)
             {
@@ -198,7 +197,7 @@ namespace MarineDigitalTwin.Boat
                 : 0;
 
             ApplyBuoyancyForces(HasValidWaterSamplesThisFrame && IsWaterSamplingReady);
-            if (traceStartup || doLog)
+            if (doLog)
                 LogPointTrace();
 
             if (IsWaterSamplingReady && !_wasWaterSamplingReady)
