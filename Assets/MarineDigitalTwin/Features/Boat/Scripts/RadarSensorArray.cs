@@ -47,11 +47,11 @@ namespace MarineDigitalTwin.Boat
         void FixedUpdate()
         {
             Vector3 origin = transform.position + Vector3.up * heightOffset;
+            Vector3 bowDir = -transform.root.right; // 선수 방향 (boat_24.FBX: bow = -localX)
 
             for (int i = 0; i < SensorCount; i++)
             {
-                float worldAngle = transform.eulerAngles.y + AnglesDeg[i];
-                Vector3 dir = Quaternion.Euler(0f, worldAngle, 0f) * Vector3.forward;
+                Vector3 dir = Quaternion.AngleAxis(AnglesDeg[i], Vector3.up) * bowDir;
 
                 if (Physics.Raycast(origin, dir, out RaycastHit hit, maxRange, obstacleMask))
                 {
@@ -71,11 +71,11 @@ namespace MarineDigitalTwin.Boat
             if (!drawGizmos) return;
 
             Vector3 origin = transform.position + Vector3.up * heightOffset;
+            Vector3 bowDir = -transform.root.right;
 
             for (int i = 0; i < SensorCount; i++)
             {
-                float worldAngle = transform.eulerAngles.y + AnglesDeg[i];
-                Vector3 dir      = Quaternion.Euler(0f, worldAngle, 0f) * Vector3.forward;
+                Vector3 dir = Quaternion.AngleAxis(AnglesDeg[i], Vector3.up) * bowDir;
                 float   dist     = Application.isPlaying ? RawDistances[i] : maxRange;
 
                 // 감지 여부에 따라 색 구분

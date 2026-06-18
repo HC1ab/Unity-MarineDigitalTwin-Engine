@@ -42,8 +42,9 @@ namespace MarineDigitalTwin.Boat
         [Header("Debug UI")]
         public bool showDebugUI = true;
 
-        Rigidbody _rb;
-        float     _timer;
+        BoatMMGController _mmg;
+        Rigidbody         _rb;
+        float             _timer;
         const float CheckInterval = 0.5f;
 
         // 최근 이벤트 로그 (UI 표시용)
@@ -60,7 +61,11 @@ namespace MarineDigitalTwin.Boat
         Vector3 _collisionHit;
         Vector3 _groundingHit;
 
-        void Awake() => _rb = GetComponent<Rigidbody>();
+        void Awake()
+        {
+            _rb  = GetComponent<Rigidbody>();
+            _mmg = GetComponent<BoatMMGController>();
+        }
 
         void FixedUpdate()
         {
@@ -77,7 +82,7 @@ namespace MarineDigitalTwin.Boat
         // ── 과속 ─────────────────────────────────────────────────────────────
         void CheckSpeeding()
         {
-            float kn = _rb.linearVelocity.magnitude * 1.944f;
+            float kn = _mmg != null ? _mmg.GetSpeedKn() : _rb.linearVelocity.magnitude * 1.944f;
             if (kn > speedThresholdKn)
                 Enqueue(EventType.SPEEDING, Severity.MEDIUM,
                         $"과속 {kn:F1}kn (제한 {speedThresholdKn}kn)");
