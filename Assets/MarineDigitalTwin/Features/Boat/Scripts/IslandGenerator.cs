@@ -45,7 +45,17 @@ namespace MarineDigitalTwin.Boat
         readonly List<GameObject> _spawned = new();
         GameObject                _islandGo;
 
-        void Start() => Generate();
+        void OnEnable()
+        {
+            if (!Application.isPlaying && transform.childCount == 0)
+                Generate();
+        }
+
+        void Awake()
+        {
+            if (Application.isPlaying && transform.childCount == 0)
+                Generate();
+        }
 
         public void Regenerate()
         {
@@ -67,7 +77,7 @@ namespace MarineDigitalTwin.Boat
             var go = new GameObject("Island_Mesh");
             go.transform.SetParent(transform);
             go.transform.localPosition = Vector3.zero;
-            go.layer = obstacleLayer;
+            go.layer = 0; // Default — 시각 전용, 레이더/소나 제외. 충돌은 Reef SphereCollider 담당
 
             int verts = resolution + 1;
             var vertices  = new Vector3[verts * verts];
@@ -252,10 +262,9 @@ namespace MarineDigitalTwin.Boat
             var go = new GameObject(goName);
             go.layer = obstacleLayer;
             go.transform.SetParent(transform);
-            go.transform.position  = pos + Vector3.up * (size * 0.15f);
-            go.transform.localScale = new Vector3(size, size * 0.3f, size);
+            go.transform.position  = pos + Vector3.up * (size * 0.5f);
+            go.transform.localScale = new Vector3(size, size, size);
 
-            // SphereCollider radius=0.5 → transform scale로 납작 타원형 콜라이더
             var col = go.AddComponent<SphereCollider>();
             col.radius = 0.5f;
 

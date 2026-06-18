@@ -5,7 +5,52 @@ using UnityEngine;
 
 public static class BoatHierarchyOrganizer
 {
-    [MenuItem("Tools/Boat/Print Children")]
+    [MenuItem("Tools/Boat/Create SensorMast")]
+    public static void CreateSensorMast()
+    {
+        var boat = GameObject.Find("Boat");
+        if (boat == null) { Debug.LogError("Boat not found"); return; }
+
+        // 이미 있으면 그냥 선택
+        var existing = boat.transform.Find("SensorMast");
+        if (existing == null)
+        {
+            // Sensors 그룹 안도 확인
+            var sensors = boat.transform.Find("Sensors");
+            if (sensors != null) existing = sensors.Find("SensorMast");
+        }
+        if (existing != null)
+        {
+            Debug.Log("[BoatHierarchyOrganizer] SensorMast already exists: " + GetPath(existing));
+            Selection.activeGameObject = existing.gameObject;
+            return;
+        }
+
+        var go = new GameObject("SensorMast");
+        Undo.RegisterCreatedObjectUndo(go, "Create SensorMast");
+        go.transform.SetParent(boat.transform, false);
+        // 선수 마스트 위치: Y=3m (갑판 위), X=-3.5m (선수 방향 = -localX)
+        go.transform.localPosition = new Vector3(-3.5f, 3f, 0f);
+
+        var radar = Undo.AddComponent<MarineDigitalTwin.Boat.RadarSensorArray>(go);
+        radar.maxRange       = 100f;
+        radar.heightOffset   = 1f;
+        radar.rayDipAngleDeg = 5f;
+        radar.obstacleMask   = ~0; // Everything
+
+        EditorSceneManager.MarkSceneDirty(boat.scene);
+        Selection.activeGameObject = go;
+        Debug.Log("[BoatHierarchyOrganizer] SensorMast created at Boat/SensorMast with RadarSensorArray (obstacleMask=Everything)");
+    }
+
+    static string GetPath(Transform t)
+    {
+        var parts = new System.Collections.Generic.Stack<string>();
+        while (t != null) { parts.Push(t.name); t = t.parent; }
+        return string.Join("/", parts);
+    }
+
+[MenuItem("Tools/Boat/Print Children")]
     public static void PrintChildren()
     {
         var boat = GameObject.Find("Boat");
