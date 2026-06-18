@@ -587,7 +587,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.8
+      value: 129
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalPosition.y
@@ -595,11 +595,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -116.3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.x
@@ -607,7 +607,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 1
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       propertyPath: m_LocalRotation.z
@@ -1097,6 +1097,15 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 89057715}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 89057716}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 89057718}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 89057717}
     - targetCorrespondingSourceObject: {fileID: 701727110916687680, guid: 9360132886c56aa4096ab7ff10e5aac0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 2055794044}
@@ -1308,6 +1317,76 @@ MonoBehaviour:
   alertDistanceM: 20
   drawGizmos: 1
   showDebugUI: 1
+--- !u!114 &89057716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 89057706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 800b5a5d8b3b61d43bc8607b4d231663, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  baseUrl: http://59.22.109.145:8082/api/v1
+  scenarioName: "\uAE30\uBCF8 \uC2DC\uB098\uB9AC\uC624"
+  sampleInterval: 1
+  sendInterval: 5
+  baseLat: 35.1
+  baseLon: 129
+  autoStart: 0
+  showDebugUI: 1
+--- !u!114 &89057717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 89057706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 80cc6ae1cf1d33f4d93823ea35f8496a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  manualRoute: {fileID: 0}
+  steeringGain: 1.2
+  maxRudder: 30
+  throttleGain: 0.1
+  lookaheadDist: 20
+  autoStart: 1
+  regenerateOnLoop: 1
+  showDebugUI: 1
+  drawGizmos: 1
+--- !u!114 &89057718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 89057706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f127fd5e44595b5489f9e3575e818a71, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  island: {fileID: 0}
+  scenario: 1
+  waypointCount: 12
+  minOrbitOffset: 30
+  maxOrbitOffset: 80
+  openSpeedKn: 10
+  reefNearbySpeedKn: 5
+  arrivalRadius: 10
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 0
+  reefCheckRadius: 15
+  insertAvoidancePoints: 1
+  speedNoise: 0.5
+  arrivalRadiusNoise: 2
+  seed: 0
+  drawGizmos: 1
 --- !u!43 &111789656
 Mesh:
   m_ObjectHideFlags: 0
