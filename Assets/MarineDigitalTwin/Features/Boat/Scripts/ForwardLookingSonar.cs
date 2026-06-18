@@ -183,23 +183,24 @@ namespace MarineDigitalTwin.Boat
 
             if (_boxStyle == null)
             {
-                _boxStyle  = new GUIStyle(GUI.skin.box)   { padding = new RectOffset(3,3,2,2) };
-                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 8, fontStyle = FontStyle.Bold };
+                _boxStyle  = new GUIStyle(GUI.skin.box)   { padding = new RectOffset(6,6,4,4) };
+                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 11, fontStyle = FontStyle.Bold };
             }
 
             var scan = LatestScan;
             if (scan.beams == null) return;
 
-            const float panelW  = 130f;
-            const float rowH    = 8f;
-            const float headerH = 10f;
-            const float summaryH = 16f;
-            float panelH = headerH + BeamCount * rowH + summaryH + 8f;
+            const float panelW  = 200f;
+            const float rowH    = 18f;
+            const float headerH = 20f;
 
-            // 레이다 패널(RadarSensorArray) 바로 아래
-            const float radarPanelH = 12f + 9 * 10f + 8f; // header + 9rows + padding
+            int sonarHits = 0;
+            foreach (var b in scan.beams) if (b.isHit) sonarHits++;
+
+            float panelH = headerH + Mathf.Max(sonarHits, 1) * rowH + 14f;
+
             float panelX = 12f;
-            float panelY = radarPanelH + 12f;
+            float panelY = RadarSensorArray.LastPanelBottom + 12f;
 
             GUI.color = new Color(0, 0, 0, 0.65f);
             GUI.Box(new Rect(panelX - 4, panelY - 4, panelW + 8, panelH + 8), GUIContent.none, _boxStyle);
@@ -210,29 +211,25 @@ namespace MarineDigitalTwin.Boat
             GUI.Label(new Rect(x, y, panelW, headerH), "■ SONAR (FLS)", _labelStyle);
             y += headerH;
 
-            foreach (var b in scan.beams)
+            if (sonarHits == 0)
             {
-                bool isAlert = b.isHit && b.distance <= alertDistanceM;
-
-                _labelStyle.normal.textColor = isAlert
-                    ? new Color(1f, 0.2f, 0.2f)
-                    : b.isHit
-                        ? new Color(1f, 0.9f - b.normalizedDist * 0.6f, 0f)
-                        : new Color(0.35f, 0.35f, 0.35f);
-
-                string distStr = b.isHit ? $"{b.distance:F0}m" : "---";
-                GUI.Label(new Rect(x, y, panelW, rowH),
-                          $"  {DirectionLabels[b.beamIndex],8}  {distStr}", _labelStyle);
-                y += rowH;
+                _labelStyle.normal.textColor = new Color(0.35f, 0.35f, 0.35f);
+                GUI.Label(new Rect(x, y, panelW, rowH), "  감지 없음", _labelStyle);
             }
-
-            // 요약
-            _labelStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
-            GUI.Label(new Rect(x, y, panelW, rowH),
-                      $"  min:{scan.minDist:F0}m {scan.minAngleDeg:F0}°  L:{scan.leftAvg:F2} C:{scan.centerAvg:F2} R:{scan.rightAvg:F2}", _labelStyle);
-            y += rowH;
-            GUI.Label(new Rect(x, y, panelW, rowH),
-                      $"  L:{scan.leftAvg:F2}  C:{scan.centerAvg:F2}  R:{scan.rightAvg:F2}", _labelStyle);
+            else
+            {
+                foreach (var b in scan.beams)
+                {
+                    if (!b.isHit) continue;
+                    bool isAlert = b.distance <= alertDistanceM;
+                    _labelStyle.normal.textColor = isAlert
+                        ? new Color(1f, 0.2f, 0.2f)
+                        : new Color(1f, 0.9f - b.normalizedDist * 0.6f, 0f);
+                    GUI.Label(new Rect(x, y, panelW, rowH),
+                              $"  {DirectionLabels[b.beamIndex],8}  {b.distance:F0}m", _labelStyle);
+                    y += rowH;
+                }
+            }
         }
 
         // ── Gizmos ────────────────────────────────────────────────────────────

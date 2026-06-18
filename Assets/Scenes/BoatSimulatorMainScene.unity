@@ -1184,7 +1184,7 @@ MonoBehaviour:
   startupMaxAngularSpeed: 1
   requiredConsecutiveValidFrames: 5
   requiredValidSampleRatio: 1
-  debugLog: 1
+  debugLog: 0
 --- !u!114 &89057710
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1212,6 +1212,7 @@ MonoBehaviour:
   angularVelocityWarningRadPerSec: 2
   accelerationWarningMps2: 10
   throttleLogThreshold: 0.25
+  enableDiagnosticLogs: 0
 --- !u!114 &89057711
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5743,8 +5744,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   target: {fileID: 89057708}
-  offset: {x: 10, y: 4, z: 0}
+  thirdPersonOffset: {x: 10, y: 4, z: 0}
   smoothSpeed: 5
+  firstPersonOffset: {x: -1, y: 2.2, z: 0}
+  firstPersonFOV: 80
+  thirdPersonFOV: 60
+  toggleKey: 99
 --- !u!114 &330585549
 MonoBehaviour:
   m_ObjectHideFlags: 0

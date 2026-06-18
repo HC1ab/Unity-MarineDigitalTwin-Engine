@@ -32,6 +32,8 @@ namespace MarineDigitalTwin.Boat
             "↙ 좌후", "↖ 좌후방", "← 좌측", "↖ 좌전방",
         };
 
+        public static float LastPanelBottom { get; private set; } = 60f;
+
         GUIStyle _boxStyle;
         GUIStyle _labelStyle;
 
@@ -103,16 +105,21 @@ namespace MarineDigitalTwin.Boat
 
             if (_boxStyle == null)
             {
-                _boxStyle = new GUIStyle(GUI.skin.box) { padding = new RectOffset(4, 4, 3, 3) };
-                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 9, fontStyle = FontStyle.Bold };
+                _boxStyle = new GUIStyle(GUI.skin.box) { padding = new RectOffset(6, 6, 5, 5) };
+                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold };
             }
 
-            const float panelW  = 150f;
-            const float rowH    = 10f;
-            const float headerH = 12f;
-            float panelH = headerH + SensorCount * rowH + 8f;
+            const float panelW  = 220f;
+            const float rowH    = 18f;
+            const float headerH = 20f;
 
-            // 배경
+            int hitCount = 0;
+            for (int i = 0; i < SensorCount; i++)
+                if (RawDistances[i] < maxRange) hitCount++;
+
+            float panelH = headerH + Mathf.Max(hitCount, 1) * rowH + 14f;
+            LastPanelBottom = 8f + panelH + 8f; // 박스 하단 y
+
             GUI.color = new Color(0, 0, 0, 0.65f);
             GUI.Box(new Rect(8, 8, panelW + 8, panelH + 8), GUIContent.none, _boxStyle);
             GUI.color = Color.white;
@@ -122,26 +129,28 @@ namespace MarineDigitalTwin.Boat
             GUI.Label(new Rect(x, y, panelW, headerH), "■ RADAR SENSOR", _labelStyle);
             y += headerH;
 
-            for (int i = 0; i < SensorCount; i++)
+            if (hitCount == 0)
             {
-                float  dist    = RawDistances[i];
-                float  reading = Readings[i];
-                bool   isHit   = dist < maxRange;
-                bool   isAlert = isHit && dist <= alertDistanceM;
-                string name    = HitNames[i];
-
-                float t = reading;
-                _labelStyle.normal.textColor = isAlert
-                    ? new Color(1f, 0.2f, 0.2f)                      // 근접 경고: 빨강
-                    : isHit
-                        ? new Color(1f, 1f - t * 0.8f, 0f)           // 감지: 주황~노랑
-                        : new Color(0.5f, 0.5f, 0.5f);               // 미감지: 회색
-
-                string distStr = isHit ? $"{dist:F0}m" : "---";
-                string nameStr = isAlert && name != null ? $" [{name}]" : "";
-                GUI.Label(new Rect(x, y, panelW, rowH),
-                          $"  {DirectionLabels[i],8}  {distStr}{nameStr}", _labelStyle);
-                y += rowH;
+                _labelStyle.normal.textColor = new Color(0.5f, 0.5f, 0.5f);
+                GUI.Label(new Rect(x, y, panelW, rowH), "  감지 없음", _labelStyle);
+            }
+            else
+            {
+                for (int i = 0; i < SensorCount; i++)
+                {
+                    float dist  = RawDistances[i];
+                    if (dist >= maxRange) continue;
+                    bool  isAlert = dist <= alertDistanceM;
+                    float t       = Readings[i];
+                    string name   = HitNames[i];
+                    _labelStyle.normal.textColor = isAlert
+                        ? new Color(1f, 0.2f, 0.2f)
+                        : new Color(1f, 1f - t * 0.8f, 0f);
+                    string nameStr = isAlert && name != null ? $" [{name}]" : "";
+                    GUI.Label(new Rect(x, y, panelW, rowH),
+                              $"  {DirectionLabels[i],8}  {dist:F0}m{nameStr}", _labelStyle);
+                    y += rowH;
+                }
             }
         }
 

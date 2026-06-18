@@ -185,10 +185,8 @@ namespace MarineDigitalTwin.Boat
                     { fontSize = 11, fontStyle = FontStyle.Bold };
 
             const float panelW = 260f;
-            // Event Detector 아래 우측 배치
-            float x = Screen.width - panelW - 10f;
-            // EventDetector: headerH=24 + 1row*22 + 8 + gap
-            float y = 10f + 24f + 22f + 8f + 12f;
+            float x = Screen.width * 0.5f - panelW * 0.5f;
+            float y = 10f;
 
             _labelStyle.normal.textColor = new Color(0.4f, 0.9f, 1f);
             GUI.Label(new Rect(x, y, panelW, 18f), "■ NPC FOLLOWER", _labelStyle);
