@@ -104,22 +104,28 @@
 | Unity | BuoyancySystem.cs | HDRP WaterSurface 부력·댐핑 |
 | Unity | BoatDebugUI.cs | 속도·타각·RPS·기어 디버그 HUD |
 | Unity | BoatCamera.cs | 선박 추적 카메라 |
+| Unity | RadarSensorArray.cs | 전방 9방향 레이캐스트 레이더, Layer 8 탐지, HUD |
+| Unity | ForwardLookingSonar.cs | 전방 60° FOV 9빔 소나, OverlapSphere+원뿔 각도 필터 |
+| Unity | EventDetector.cs | 충돌경고(소나+레이더 15m), 실제충돌, 과속(35kn) 감지·HUD |
 | 백엔드 | 전체 API | 세션·텔레메트리·환경·리포트 엔드포인트 |
 | 백엔드 | Docker Compose | PostgreSQL+PostGIS, Redis, Spring Boot |
 | 백엔드 | Flyway 마이그레이션 | DB 스키마 (V1__init.sql) |
+
+### 센서 구현 상세
+- **ForwardLookingSonar**: `Boat` GO에 부착. `obstacleMask = Layer 8`. `bowDir = -transform.root.right`. 수평 투영 각도 비교(`beamDirH`, `toColH` 둘 다 XZ). `dipAngleDeg = 0` 유지.
+- **RadarSensorArray**: `Boat` GO에 부착. `obstacleMask = Layer 8 (256)`. Awake 폴백 적용.
+- **EventDetector**: Awake에서 `GetComponentInChildren`으로 소나·레이더 자동 연결. 충돌경고는 2m 밴드 통과 시에만 발생(스팸 방지). `seabedLayer` 세팅 시 좌초경고 활성화.
 
 ### 미구현 (우선순위 순)
 | 우선순위 | 담당 | 작업 |
 |---|---|---|
 | **P1** | 백엔드 | WeatherScheduler — 공공 API 실연동 (기상청 부이 + 국립해양조사원 조위) |
 | **P2** | Unity | EnvironmentSystem.cs — 기상 폴링 + Crest/Wind/Fog 파라미터 적용 |
-| **P3** | Unity | RadarSensor.cs + RadarDisplay.cs — 선수 탑재 가상 레이더, 360° 탐지 + HUD |
-| **P4** | Unity | EventDetector.cs — RadarSensor 연동, 충돌·과속·항로이탈·좌초 감지 |
-| **P5** | Unity | TelemetryCollector.cs — 세션 시작/종료 + 5초 Bulk 전송 |
-| **P6** | 백엔드 | EvaluationService — 세션 종료 시 evaluation_results 자동 생성 |
-| **P7** | Unity | 결과 화면 UI — totalScore·이벤트 카운트·passed 표시 |
-| **P8** | Unity | Rule-based NPC — 자동 항해로 데이터 대량 수집 |
-| **P9** | ML | LSTM 학습 파이프라인 → ONNX → Unity Sentis 탑재 |
+| **P3** | Unity | TelemetryCollector.cs — 세션 시작/종료 + 5초 Bulk 전송 |
+| **P4** | 백엔드 | EvaluationService — 세션 종료 시 evaluation_results 자동 생성 |
+| **P5** | Unity | 결과 화면 UI — totalScore·이벤트 카운트·passed 표시 |
+| **P6** | Unity | Rule-based NPC — 자동 항해로 데이터 대량 수집 |
+| **P7** | ML | LSTM 학습 파이프라인 → ONNX → Unity Sentis 탑재 |
 
 ---
 

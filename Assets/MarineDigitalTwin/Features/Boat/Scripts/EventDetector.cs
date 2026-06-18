@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace MarineDigitalTwin.Boat
 {
-    public enum EventType { SPEEDING, COLLISION_WARNING, ROUTE_DEVIATION, GROUNDING_WARNING }
+    public enum EventType { SPEEDING, COLLISION_WARNING, COLLISION, ROUTE_DEVIATION, GROUNDING_WARNING }
     public enum Severity  { LOW, MEDIUM, HIGH }
 
     public struct DetectedEvent
@@ -30,8 +30,13 @@ namespace MarineDigitalTwin.Boat
         [Header("Waypoints")]
         public Transform[] waypoints;
 
+        [Header("Sensors")]
+        public ForwardLookingSonar sonar;
+        public RadarSensorArray    radar;
+        public float warnDistM = 15f;
+
         [Header("Thresholds")]
-        public float speedThresholdKn    = 8f;
+        public float speedThresholdKn    = 35f;
         public float warningDistanceM    = 30f;
         public float routeDeviationDistM = 50f;
         public float groundingDepthM     = 2f;
@@ -55,6 +60,10 @@ namespace MarineDigitalTwin.Boat
         GUIStyle _boxStyle;
         GUIStyle _labelStyle;
 
+        // 충돌경고 거리 밴드 추적 (2m 간격)
+        float _lastWarnBand = float.MaxValue;
+        const float WarnBandStep = 2f;
+
         // Gizmo 상태
         bool    _collisionActive;
         bool    _groundingActive;
@@ -65,6 +74,8 @@ namespace MarineDigitalTwin.Boat
         {
             _rb  = GetComponent<Rigidbody>();
             _mmg = GetComponent<BoatMMGController>();
+            if (sonar == null) sonar = GetComponentInChildren<ForwardLookingSonar>(true);
+            if (radar == null) radar = GetComponentInChildren<RadarSensorArray>(true);
         }
 
         void FixedUpdate()
@@ -88,20 +99,67 @@ namespace MarineDigitalTwin.Boat
                         $"과속 {kn:F1}kn (제한 {speedThresholdKn}kn)");
         }
 
-        // ── 전방 충돌경고 (선수 레이캐스트) ──────────────────────────────────
+        // ── 전방 충돌경고 (소나 + 레이더 병합, 레이캐스트 폴백) ─────────────
         void CheckCollisionWarning()
         {
-            // boat_24.FBX bow = -transform.right
-            Vector3 bowPos  = transform.position + (-transform.right * 3.65f);
-            Vector3 bowDir  = -transform.right;
-            _collisionActive = Physics.Raycast(bowPos, bowDir, out RaycastHit hit,
-                                               warningDistanceM, obstacleLayer);
+            float minDist   = float.MaxValue;
+            string source   = "";
+
+            // 소나: 전방 60° FOV minDist
+            if (sonar != null && sonar.LatestScan.beams != null)
+            {
+                float d = sonar.LatestScan.minDist;
+                if (d < minDist) { minDist = d; source = $"소나 {d:F0}m"; }
+            }
+
+            // 레이더: 전방 3개 센서 (인덱스 0=정면, 1=우전방, 8=좌전방)
+            if (radar != null)
+            {
+                int[] frontIdx = { 0, 1, 8 };
+                foreach (int idx in frontIdx)
+                {
+                    float d = radar.RawDistances[idx];
+                    if (d < minDist) { minDist = d; source = $"레이더[{idx}] {d:F0}m"; }
+                }
+            }
+
+            _collisionActive = minDist <= warnDistM;
             if (_collisionActive)
             {
-                _collisionHit = hit.point;
-                Enqueue(EventType.COLLISION_WARNING, Severity.HIGH,
-                        $"전방 {hit.distance:F0}m 장애물 ({hit.collider.gameObject.name})");
+                // 2m 밴드 통과 시에만 발생
+                float band = Mathf.Floor(minDist / WarnBandStep) * WarnBandStep;
+                if (band < _lastWarnBand)
+                {
+                    _lastWarnBand = band;
+                    Enqueue(EventType.COLLISION_WARNING, Severity.HIGH,
+                            $"충돌경고 {minDist:F0}m — {source}");
+                }
+                return;
             }
+            // 범위 벗어나면 밴드 리셋
+            _lastWarnBand = float.MaxValue;
+
+            // 소나·레이더 모두 미연결 시 레이캐스트 폴백
+            if (sonar == null && radar == null)
+            {
+                Vector3 bowPos = transform.position + (-transform.right * 3.65f);
+                _collisionActive = Physics.Raycast(bowPos, -transform.right, out RaycastHit hit,
+                                                   warningDistanceM, obstacleLayer);
+                if (_collisionActive)
+                {
+                    _collisionHit = hit.point;
+                    Enqueue(EventType.COLLISION_WARNING, Severity.HIGH,
+                            $"전방 {hit.distance:F0}m 장애물 ({hit.collider.gameObject.name})");
+                }
+            }
+        }
+
+        // ── 실제 충돌 ─────────────────────────────────────────────────────────
+        void OnCollisionEnter(Collision col)
+        {
+            if (obstacleLayer.value != 0 && (obstacleLayer.value & (1 << col.gameObject.layer)) == 0) return;
+            Enqueue(EventType.COLLISION, Severity.HIGH,
+                    $"충돌: {col.gameObject.name} (충격 {col.impulse.magnitude:F1}N)");
         }
 
         // ── 항로이탈 (최근접 웨이포인트 거리) ────────────────────────────────
@@ -208,7 +266,8 @@ namespace MarineDigitalTwin.Boat
                 string tag  = ev.eventType switch
                 {
                     EventType.SPEEDING          => "⚡ SPEED",
-                    EventType.COLLISION_WARNING => "⚠ COLL",
+                    EventType.COLLISION_WARNING => "⚠ 충돌경고",
+                    EventType.COLLISION         => "💥 충돌",
                     EventType.ROUTE_DEVIATION   => "↗ ROUTE",
                     EventType.GROUNDING_WARNING => "⬇ GRND",
                     _                           => "?"

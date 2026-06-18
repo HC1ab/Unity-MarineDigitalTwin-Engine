@@ -64,6 +64,12 @@ namespace MarineDigitalTwin.Boat
         [Tooltip("이 거리 이하로 접근 시 물체 이름 강조 표시 (m)")]
         public float alertDistanceM = 30f;
 
+        void Awake()
+        {
+            if (obstacleMask.value == 0)
+                obstacleMask = 1 << 8; // Layer 8: Obstacle/Reef
+        }
+
         void FixedUpdate()
         {
             Vector3 origin = transform.position + Vector3.up * heightOffset;
