@@ -103,13 +103,13 @@ namespace MarineDigitalTwin.Boat
 
             if (_boxStyle == null)
             {
-                _boxStyle = new GUIStyle(GUI.skin.box) { padding = new RectOffset(8, 8, 6, 6) };
-                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold };
+                _boxStyle = new GUIStyle(GUI.skin.box) { padding = new RectOffset(4, 4, 3, 3) };
+                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 9, fontStyle = FontStyle.Bold };
             }
 
-            const float panelW  = 260f;
-            const float rowH    = 20f;
-            const float headerH = 22f;
+            const float panelW  = 150f;
+            const float rowH    = 10f;
+            const float headerH = 12f;
             float panelH = headerH + SensorCount * rowH + 8f;
 
             // 배경

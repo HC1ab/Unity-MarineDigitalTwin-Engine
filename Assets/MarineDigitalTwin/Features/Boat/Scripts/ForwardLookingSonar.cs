@@ -185,21 +185,21 @@ namespace MarineDigitalTwin.Boat
 
             if (_boxStyle == null)
             {
-                _boxStyle  = new GUIStyle(GUI.skin.box)   { padding = new RectOffset(6,6,4,4) };
-                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 10, fontStyle = FontStyle.Bold };
+                _boxStyle  = new GUIStyle(GUI.skin.box)   { padding = new RectOffset(3,3,2,2) };
+                _labelStyle = new GUIStyle(GUI.skin.label) { fontSize = 8, fontStyle = FontStyle.Bold };
             }
 
             var scan = LatestScan;
             if (scan.beams == null) return;
 
-            const float panelW  = 210f;
-            const float rowH    = 16f;
-            const float headerH = 18f;
-            const float summaryH = 32f;
+            const float panelW  = 130f;
+            const float rowH    = 8f;
+            const float headerH = 10f;
+            const float summaryH = 16f;
             float panelH = headerH + BeamCount * rowH + summaryH + 8f;
 
             // 레이다 패널(RadarSensorArray) 바로 아래
-            const float radarPanelH = 22f + 9 * 20f + 16f; // header + 9rows + padding
+            const float radarPanelH = 12f + 9 * 10f + 8f; // header + 9rows + padding
             float panelX = 12f;
             float panelY = radarPanelH + 12f;
 
