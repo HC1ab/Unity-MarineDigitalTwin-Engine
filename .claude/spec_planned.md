@@ -1,5 +1,53 @@
 # Planned Spec (계획중 / 미구현)
-> 마지막 업데이트: 2026-06-12
+> 마지막 업데이트: 2026-06-13
+
+---
+
+---
+
+## 환경 / 맵
+
+### TODO: 맵 기본 구성 (EventDetector 구현 전 선행 필수)
+- **Seabed (해저 지형)**
+  - Ocean 아래 평면 mesh 배치
+  - Layer: `Seabed` (새 LayerMask 생성)
+  - 좌초 위험 레이캐스트 타겟
+- **Waypoint 경로**
+  - 빈 GameObject 배열 (`Waypoints/WP_00, WP_01 ...`)
+  - 항로 이탈 거리 체크 기준
+- **장애물**
+  - 부표, 암초 등 Collider 오브젝트
+  - Dock은 이미 존재 ✅
+
+### TODO: 선착장 충돌 처리
+- **현재**: Dock에 Collider 있지만 충돌 물리 미세 튜닝 안 됨
+- **구현 내용**:
+  - Dock Collider PhysicsMaterial 설정 (반발계수, 마찰)
+  - 충돌 시 Rigidbody 충격 처리 (속도 급감)
+  - 충돌 이벤트 → EventDetector 연동
+
+---
+
+## 이벤트 감지
+
+### TODO: EventDetector.cs (P3)
+- **위치**: `Features/Sensor/EventDetector.cs`
+- **선행 조건**: 맵 기본 구성 완료 (Seabed LayerMask, Waypoints)
+- **감지 항목**:
+
+| 이벤트 | 방법 | Inspector 노출 |
+|--------|------|---------------|
+| 과속 | `speedKn > threshold` | `speedThreshold` (kn) |
+| 충돌 경고 | `OnCollisionEnter` + 전방 레이캐스트 | `warningDistance` (m) |
+| 항로 이탈 | Waypoint 리스트 기반 거리 체크 | `routeDeviationDist` (m) |
+| 좌초 위험 | 선저 하방 레이캐스트 → Seabed LayerMask | `groundingDepth` (m) |
+
+- **출력**: 내부 이벤트 큐 (TelemetryCollector가 소비)
+- **이벤트 구조**:
+  ```csharp
+  public enum EventType { Overspeed, CollisionWarning, RouteDeviation, GroundingRisk }
+  public struct DetectedEvent { public EventType type; public float value; public float timestamp; }
+  ```
 
 ---
 
@@ -61,8 +109,18 @@
 - 노이즈 + 바이어스 모델 포함
 
 ### TODO: LiDAR
-- Raycast 기반 360° 스캔
+- Raycast 기반 360° 수평 스캔
 - 출력: 거리 배열, 포인트 클라우드
+- 위치: `Features/Sensor/LidarSensor.cs`
+
+### TODO: 레이더 센서 (Radar)
+- **방식**: 원형 범위 내 Collider 감지 (Physics.OverlapSphere 또는 SphereCast)
+- **출력**: 감지 대상 목록 (거리, 방위각, 상대속도)
+- **갱신 주기**: 설정 가능 (기본 1~2Hz, 실제 레이더 모사)
+- **Inspector 노출**: `radarRange` (m), `scanInterval` (s)
+- **시각화**: Scene Gizmo로 스캔 범위 + 감지 대상 표시
+- **위치**: `Features/Sensor/RadarSensor.cs`
+- **EventDetector 연동**: 충돌 경고 전방 감지 보조
 
 ### TODO: 데이터 로깅
 - CSV / JSON 포맷
@@ -113,7 +171,7 @@ Assets/MarineDigitalTwin/
 │   ├── Ocean/            ← 미생성
 │   ├── Weather/          ← 미생성
 │   ├── UI/               ← 미생성 (현재 DebugCanvas만)
-│   ├── Sensor/           ← 미생성
+│   ├── Sensor/           ← 미생성 (GPS, IMU, LiDAR, Radar, EventDetector)
 │   ├── Hardware/         ← 미생성
 │   ├── DataLogging/      ← 미생성
 │   └── ML/               ← 미생성

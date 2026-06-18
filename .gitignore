@@ -39,8 +39,15 @@
 # Jetbrains Rider personal-layer settings
 *.DotSettings.user
 
+# macOS
+.DS_Store
+
 # Visual Studio cache directory
 .vs/
+.vscode/
+
+# Visual Studio solution (auto-generated)
+*.slnx
 
 # Gradle cache directory
 .gradle/

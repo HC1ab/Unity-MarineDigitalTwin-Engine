@@ -1,5 +1,5 @@
 # Current Spec (확정 사용중)
-> 마지막 업데이트: 2026-06-12
+> 마지막 업데이트: 2026-06-13
 
 ---
 
@@ -85,17 +85,35 @@ MMG (Maneuvering Modeling Group) 표준 모델 — Hull + Propeller + Rudder 힘
 |------|----------|----------------|-----------|
 | FORWARD | +1 | +0.04 (우현 편류) | 100% |
 | NEUTRAL | 0 | 0 | 100% |
-| REVERSE | -1 | -0.08 (좌현 편류 2배) | 30% |
+| REVERSE | -1 | -0.03 (좌현 편류) | speedFactor × 역방향 |
 
 #### 저항 모델
 ```
-X_H  = -0.5 × ρ × Lpp × d × U² × 0.08 × β²        (편류 저항)
-X_RR = -0.5 × ρ × Lpp × d × 0.06 × humpMult × trimResist × u|u|  (전진 저항)
-humpMult  = 1 + 0.8 × exp(-((speedKn - 10) / 3)²)  (planing 곡선)
-trimResist = 1 - trimAngleDeg × 0.015               (트림 저항 보정)
+X_H  = -0.5 × ρ × Lpp × d × U² × 0.08 × β²            (편류 저항)
+X_RR = -0.5 × ρ × Lpp × d × resistCoeff × humpMult × trimResist × u|u|
+  resistCoeff = 0.06 (전진) / 0.18 (후진, 선미 형상 불리 3배)
+  humpMult = 1 + 0.8 × exp(-((speedKn-10)/3)²)  (전진만 적용, 후진=1.0)
+  trimResist = 1 - trimAngleDeg × 0.015
 ```
-- Hump 구간 (8~12kn): 저항 최대 1.8배
+- Hump 구간 (8~12kn): 저항 최대 1.8배 (전진만)
 - 플레이닝 이후 (12kn+): 저항 1.0배 수렴
+- 후진 최대 속도 하드 캡: `maxReverseSpeedMs = 2.3 m/s` (≈4.5 kn, Inspector 조정 가능)
+
+#### 후진 러더 모델 (전진과 별도)
+```
+u_R     = Abs(_u)   (선미 진행 속도 직접 사용, 슬립스트림 없음)
+F_N_rev = 0.5 × ρ × A_R × f_alpha × sin(δ) × u_R² × speedFactor
+Y_R     = +(1+a_H) × F_N_rev × cos(δ)   (부호 반전 — 흐름 방향 역전)
+N_R     = +(x_R + a_H×x_H) × F_N_rev × cos(δ)  (부호 반전)
+```
+- D키(우현 타각) = 우회전, A키(좌현 타각) = 좌회전 (전진과 동일 방향키 의미 유지)
+
+#### beta (편류각) 계산 — 후진 발산 방지
+```
+uRef = Abs(_u)   (전진/후진 무관 실제 진행 속도)
+beta = atan2(-_v, max(uRef, 0.01))
+```
+- 후진 시 _u < 0 → 기존 atan2(-_v, _u) = ±π 폭발 방지
 
 #### 러더
 | 파라미터 | 값 | 설명 |
